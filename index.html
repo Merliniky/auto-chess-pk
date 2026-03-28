@@ -555,22 +555,46 @@ const SYNERGIES = {
 };
 
 // ============================================================
+//  AI兵种模板（通用兵种，非英雄）
+// ============================================================
+const ENEMY_TEMPLATES = {
+  warrior: {
+    id:'enemy_warrior', name:'战士', cls:'warrior', emoji:'🛡️',
+    baseHp:750, atk:65, atkMs:1100, range:1, armor:30,
+    ab:{ name:'格挡', desc:'减少承受的伤害50%，持续3秒', cost:80,
+         type:'block', reduction:0.5, dur:3000 }
+  },
+  mage: {
+    id:'enemy_mage', name:'法师', cls:'mage', emoji:'🔮',
+    baseHp:420, atk:45, atkMs:1400, range:3, armor:5,
+    ab:{ name:'奥术轰击', desc:'对3个敌方单位造成120点范围伤害', cost:90,
+         type:'enemy_aoe', dmg:120, targets:3 }
+  },
+  priest: {
+    id:'enemy_priest', name:'牧师', cls:'priest', emoji:'✝️',
+    baseHp:480, atk:40, atkMs:1300, range:3, armor:10,
+    ab:{ name:'治愈术', desc:'治疗一个血量最低的友军150HP', cost:85,
+         type:'heal', amt:150 }
+  },
+};
+
+// ============================================================
 //  关卡配置
 // ============================================================
 const STAGES = [
-  { name:'先锋小队', units:['garrosh','varian','bolvar','anduin','velen'], enemyLv:1,
+  { name:'先锋小队', units:['warrior','warrior','warrior','priest','priest'], enemyLv:1,
     positions:[{col:1,row:2},{col:3,row:2},{col:5,row:2},{col:2,row:0},{col:4,row:0}],
     dropBase:2, clearBonus:3 },
-  { name:'法师军团', units:['garrosh','bolvar','jaina','khadgar','antonidas'], enemyLv:2,
+  { name:'法师军团', units:['warrior','warrior','mage','mage','mage'], enemyLv:2,
     positions:[{col:2,row:2},{col:4,row:2},{col:1,row:0},{col:3,row:0},{col:5,row:0}],
     dropBase:3, clearBonus:5 },
-  { name:'平衡之力', units:['varian','bolvar','jaina','antonidas','anduin'], enemyLv:3,
+  { name:'平衡之力', units:['warrior','warrior','mage','mage','priest'], enemyLv:3,
     positions:[{col:2,row:3},{col:4,row:3},{col:1,row:1},{col:5,row:1},{col:3,row:0}],
     dropBase:4, clearBonus:8 },
-  { name:'精英卫队', units:['bolvar','jaina','khadgar','antonidas','velen'], enemyLv:4,
+  { name:'精英卫队', units:['warrior','mage','mage','mage','priest'], enemyLv:4,
     positions:[{col:3,row:3},{col:1,row:1},{col:3,row:1},{col:5,row:1},{col:3,row:0}],
     dropBase:5, clearBonus:12 },
-  { name:'最终之战', units:['garrosh','bolvar','jaina','antonidas','velen'], enemyLv:5,
+  { name:'最终之战', units:['warrior','warrior','mage','mage','priest'], enemyLv:5,
     positions:[{col:2,row:3},{col:4,row:3},{col:1,row:1},{col:5,row:1},{col:3,row:0}],
     dropBase:6, clearBonus:0 },
 ];
@@ -780,18 +804,26 @@ function createUnitGfx(u) {
   glow.drawRoundedRect(-halfW+2, -halfH+2, halfW*2-4, halfH*2-4, 4); glow.endFill();
 
   let portrait;
-  const tex = TEXTURES[u.charId];
-  if (tex) {
-    portrait = new PIXI.Sprite(tex);
-    portrait.width = 42; portrait.height = 42;
-    portrait.anchor.set(0.5); portrait.y = -18;
+  if (u.isGeneric) {
+    // Generic enemy soldier: show class name instead of portrait
+    const clsName = {warrior:'战士', mage:'法师', priest:'牧师'}[u.cls] || u.cls;
+    portrait = new PIXI.Text(clsName, { fontSize: 22, fill: unitColor, fontFamily:'Georgia, serif', fontWeight:'bold', align:'center' });
+    portrait.anchor.set(0.5); portrait.y = -10;
   } else {
-    portrait = new PIXI.Text(u.emoji, { fontSize: 30, align:'center' });
-    portrait.anchor.set(0.5); portrait.y = -6;
+    const tex = TEXTURES[u.charId];
+    if (tex) {
+      portrait = new PIXI.Sprite(tex);
+      portrait.width = 42; portrait.height = 42;
+      portrait.anchor.set(0.5); portrait.y = -18;
+    } else {
+      portrait = new PIXI.Text(u.emoji, { fontSize: 30, align:'center' });
+      portrait.anchor.set(0.5); portrait.y = -6;
+    }
   }
 
   const maxNameW = halfW*2-6;
-  const nameText = new PIXI.Text(u.name, { fontSize:12, fill:0xf0d080, fontFamily:'Georgia, serif', align:'center' });
+  const displayName = u.isGeneric ? u.ab.name : u.name;
+  const nameText = new PIXI.Text(displayName, { fontSize:12, fill:0xf0d080, fontFamily:'Georgia, serif', align:'center' });
   nameText.anchor.set(0.5); nameText.y = 16;
   if (nameText.width > maxNameW) nameText.scale.set(maxNameW / nameText.width);
 
@@ -1344,6 +1376,21 @@ function castAbility(u, tgt, foes, mates, now) {
   const sp = spellPower(u.team);
 
   switch (u.ab.type) {
+    case 'block':
+      u.blockReduction = u.ab.reduction;
+      u.blockEnd = now + u.ab.dur;
+      showDmgText(u, '格挡！', 'heal');
+      addShieldGfx(u);
+      if (u.gfx) spawnParticles(u.gfx.x, u.gfx.y, 0xffaa44, 6, {spread:25, upward:20, life:0.4});
+      break;
+    case 'enemy_aoe': {
+      const living = foes.filter(f => f.hp > 0);
+      const targets = living.sort(() => Math.random()-0.5).slice(0, u.ab.targets || 3);
+      targets.forEach(f => {
+        applyDmg(f, Math.round(u.ab.dmg*(1+sp)), 'magic'); showSpellFx(f,'💥',0x8844ff); animHit(f);
+      });
+      break;
+    }
     case 'buff':
       mates.filter(m => m.hp > 0 && chebyshev(u,m) <= u.ab.radius).forEach(m => {
         m.atkMult = 1 + u.ab.buffAmt; m.buffEnd = now + u.ab.dur;
@@ -1395,6 +1442,10 @@ function castAbility(u, tgt, foes, mates, now) {
 
 function applyDmg(u, dmg, type) {
   if (u.hp <= 0) return;
+  // Block reduction (warrior enemy ability)
+  if (u.blockReduction && u.blockEnd && Date.now() < u.blockEnd) {
+    dmg = Math.round(dmg * (1 - u.blockReduction));
+  }
   u.hp = Math.max(0, u.hp - dmg);
   showDmgText(u, dmg, type);
   refreshUnitBars(u);
@@ -1613,10 +1664,11 @@ function setupStage() {
 
 function placeEnemies() {
   const stage = STAGES[GAME.stage];
-  stage.units.forEach((charId, i) => {
-    const ch = CHARS[charId];
+  stage.units.forEach((clsType, i) => {
+    const ch = ENEMY_TEMPLATES[clsType];
     const pos = stage.positions[i];
     const u = makeUnit(ch, pos.col, pos.row, 'enemy', stage.enemyLv);
+    u.isGeneric = true; // mark as generic soldier (no portrait)
     spawnUnit(u);
   });
 }
