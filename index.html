@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>魔兽自走棋 - 战斗Demo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #c8a84b;
+  --gold-light: #f0d080;
+  --gold-dark: #6b4f1a;
+  --bg-dark: #0d0802;
+  --bg-mid: #1a1008;
+  --bg-panel: #130d06;
+  --warrior-color: #e05050;
+  --mage-color: #5599ee;
+  --priest-color: #ddcc55;
+  --hp-green: #33cc44;
+  --mana-blue: #3388ff;
+}
+
+body {
+  background: var(--bg-dark);
+  color: var(--gold-light);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-image: radial-gradient(ellipse at 50% 0%, #2a1808 0%, #0d0802 60%);
+  overflow-x: hidden;
+}
+
+/* ===== HEADER ===== */
+#header {
+  width: 100%;
+  text-align: center;
+  padding: 14px 0 10px;
+  background: linear-gradient(180deg, #2a1a08 0%, #110a04 100%);
+  border-bottom: 2px solid var(--gold-dark);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+#header h1 {
+  font-size: 1.9em;
+  color: var(--gold);
+  text-shadow: 0 0 24px rgba(200,168,75,0.6);
+  letter-spacing: 5px;
+}
+#header .sub {
+  font-size: 0.75em;
+  color: #886633;
+  letter-spacing: 3px;
+  margin-top: 3px;
+}
+
+/* ===== LAYOUT ===== */
+#game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  padding: 12px;
+  gap: 10px;
+}
+#main-area {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* ===== SYNERGY PANEL ===== */
+#synergy-panel {
+  width: 190px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--gold-dark);
+  border-radius: 5px;
+  padding: 10px;
+}
+#synergy-panel h3 {
+  color: var(--gold);
+  font-size: 0.85em;
+  text-align: center;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--gold-dark);
+}
+.syn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid transparent;
+  transition: all 0.3s;
+}
+.syn-row.active { border-color: var(--gold-dark); background: rgba(200,168,75,0.08); }
+.syn-icon { font-size: 1.3em; }
+.syn-info { flex: 1; min-width: 0; }
+.syn-name { font-size: 0.72em; color: var(--gold); }
+.syn-count { font-size: 0.65em; color: #777; }
+.syn-row.active .syn-count { color: var(--gold-light); }
+.syn-desc { font-size: 0.6em; color: #666; margin-top: 2px; line-height: 1.3; }
+.syn-row.active .syn-desc { color: #aaa; }
+
+.syn-details {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gold-dark);
+  font-size: 0.63em;
+  color: #777;
+  line-height: 1.6;
+}
+.syn-details .cls { color: var(--gold); font-size: 1.05em; margin-top: 6px; display: block; }
+
+/* ===== BATTLEFIELD ===== */
+#battlefield-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.zone-label {
+  font-size: 0.72em;
+  letter-spacing: 2px;
+  color: #555;
+}
+.zone-label.enemy { color: #aa3333; }
+.zone-label.player { color: #228833; }
+
+#pixi-container {
+  border: 2px solid var(--gold-dark);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 6px 30px rgba(0,0,0,0.8);
+}
+#pixi-container canvas {
+  display: block;
+}
+
+/* ===== SIDE PANEL ===== */
+#side-panel {
+  width: 215px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--gold-dark);
+  border-radius: 5px;
+  padding: 10px;
+}
+.panel-box h3 {
+  color: var(--gold);
+  font-size: 0.82em;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--gold-dark);
+  text-align: center;
+}
+
+/* Bench */
+#bench-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+.bench-card {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+.bench-card.warrior { border-color: var(--warrior-color); background: rgba(200,60,60,0.12); }
+.bench-card.mage    { border-color: var(--mage-color);    background: rgba(70,140,220,0.12); }
+.bench-card.priest  { border-color: var(--priest-color);  background: rgba(210,190,70,0.12); }
+.bench-card:hover   { transform: scale(1.08); box-shadow: 0 0 10px rgba(200,168,75,0.4); }
+.bench-card.selected { box-shadow: 0 0 14px rgba(200,168,75,0.9); border-width: 2px; }
+.bench-card.placed  { opacity: 0.4; cursor: default; }
+.bench-card.placed:hover { transform: none; box-shadow: none; }
+.bc-emoji { font-size: 1.6em; }
+.bc-name  { font-size: 0.52em; color: var(--gold-light); text-align: center; margin-top: 2px; }
+.bc-class { font-size: 0.45em; color: #666; }
+
+/* Battle log */
+#log-box { max-height: 320px; overflow-y: auto; }
+#log-box::-webkit-scrollbar { width: 4px; }
+#log-box::-webkit-scrollbar-track { background: #111; }
+#log-box::-webkit-scrollbar-thumb { background: var(--gold-dark); }
+.log-e { font-size: 0.68em; padding: 2px 1px; border-bottom: 1px solid rgba(74,53,32,0.25); color: #777; line-height: 1.4; }
+.log-e.atk    { color: #cc9944; }
+.log-e.ability{ color: #6699cc; }
+.log-e.heal   { color: #55aa66; }
+.log-e.death  { color: #bb4444; }
+.log-e.sys    { color: var(--gold); font-style: italic; }
+
+/* ===== CONTROLS ===== */
+#controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.phase-badge {
+  padding: 6px 14px;
+  border: 1px solid var(--gold-dark);
+  border-radius: 3px;
+  font-size: 0.82em;
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: rgba(200,168,75,0.05);
+}
+.btn {
+  padding: 9px 22px;
+  border: 1px solid var(--gold-dark);
+  background: linear-gradient(180deg,#2a1a08,#160e04);
+  color: var(--gold);
+  font-family: Georgia, serif;
+  font-size: 0.85em;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.18s;
+}
+.btn:hover { border-color: var(--gold); background: linear-gradient(180deg,#3a2a10,#2a1808); box-shadow: 0 0 10px rgba(200,168,75,0.3); }
+.btn:active { transform: scale(0.96); }
+.btn.primary { border-color: var(--gold); font-size: 0.95em; padding: 10px 30px; }
+.btn:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.hint { font-size: 0.65em; color: #555; }
+#fps-counter { font-size: 0.65em; color: #555; font-family: monospace; }
+
+/* ===== RESULT OVERLAY ===== */
+#result-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 24px;
+}
+#result-overlay.show { display: flex; animation: fadein 0.5s ease; }
+@keyframes fadein { from{opacity:0} to{opacity:1} }
+#result-txt {
+  font-size: 3em;
+  letter-spacing: 6px;
+  text-shadow: 0 0 40px currentColor;
+}
+#result-sub { font-size: 1em; color: #888; letter-spacing: 2px; }
+
+/* ===== PORTRAIT LOCK OVERLAY ===== */
+#rotate-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,6,2,0.97);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--gold);
+  text-align: center;
+  padding: 30px;
+}
+#rotate-overlay .rotate-icon {
+  font-size: 4em;
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%,100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+#rotate-overlay .rotate-text {
+  font-size: 1.2em;
+  letter-spacing: 2px;
+}
+#rotate-overlay .rotate-sub {
+  font-size: 0.8em;
+  color: #886633;
+}
+
+/* ===== MOBILE LANDSCAPE ===== */
+@media (max-width: 932px) and (orientation: portrait) {
+  #rotate-overlay { display: flex !important; }
+  #game { display: none !important; }
+  #header { display: none !important; }
+}
+
+@media (max-width: 932px) and (orientation: landscape) {
+  #rotate-overlay { display: none !important; }
+  #game { display: flex !important; }
+
+  /* Force everything into viewport height */
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  #header {
+    padding: 2px 0 1px;
+    flex-shrink: 0;
+  }
+  #header h1 {
+    font-size: 0.85em;
+    letter-spacing: 2px;
+  }
+  #header .sub {
+    font-size: 0.5em;
+    margin-top: 0;
+  }
+
+  #game {
+    padding: 2px 4px;
+    gap: 2px;
+    max-width: 100%;
+    height: calc(100vh - 28px);
+    overflow: hidden;
+  }
+
+  #main-area {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Synergy: narrow column on left */
+  #synergy-panel {
+    width: 90px;
+    min-width: 90px;
+    padding: 3px;
+    overflow-y: auto;
+  }
+  #synergy-panel h3 {
+    font-size: 0.6em;
+    margin-bottom: 3px;
+    padding-bottom: 2px;
+  }
+  .syn-row {
+    padding: 2px;
+    margin-bottom: 2px;
+    gap: 3px;
+  }
+  .syn-icon { font-size: 0.85em; }
+  .syn-name { font-size: 0.55em; }
+  .syn-count { font-size: 0.5em; }
+  .syn-desc { font-size: 0.45em; }
+  .syn-details { display: none; }
+
+  /* Battlefield: center, scaled to fit */
+  #battlefield-wrap {
+    flex: 1;
+    min-width: 0;
+    gap: 1px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .zone-label { font-size: 0.5em; line-height: 1.2; }
+
+  #pixi-container {
+    border-width: 1px;
+    flex-shrink: 1;
+  }
+
+  /* Side panel: compact column on right */
+  #side-panel {
+    width: 110px;
+    min-width: 110px;
+    gap: 3px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel-box {
+    padding: 3px;
+    min-height: 0;
+  }
+  .panel-box h3 {
+    font-size: 0.58em;
+    margin-bottom: 3px;
+    padding-bottom: 2px;
+    letter-spacing: 1px;
+  }
+
+  /* Bench: tighter */
+  #bench-panel {
+    flex-shrink: 0;
+  }
+  #bench-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .bench-card {
+    border-radius: 3px;
+  }
+  .bc-emoji { font-size: 1em; }
+  .bc-name { font-size: 0.4em; }
+  .bc-class { display: none; }
+  .bench-card + div[style] { display: none; }
+
+  /* Log: fill remaining space */
+  #log-box {
+    flex: 1;
+    max-height: none;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .log-e { font-size: 0.48em; padding: 1px 0; }
+
+  /* Controls: fixed bottom bar */
+  #controls {
+    padding: 2px 0;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .phase-badge {
+    padding: 2px 6px;
+    font-size: 0.55em;
+  }
+  .btn {
+    padding: 3px 8px;
+    font-size: 0.6em;
+  }
+  .btn.primary {
+    padding: 4px 12px;
+    font-size: 0.65em;
+  }
+  .hint { font-size: 0.45em; }
+  #fps-counter { font-size: 0.45em; }
+}
+
+/* Desktop responsive */
+@media (min-width: 933px) {
+  #rotate-overlay { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- 竖屏提示 -->
+<div id="rotate-overlay">
+  <div class="rotate-icon">📱</div>
+  <div class="rotate-text">请横屏游玩</div>
+  <div class="rotate-sub">Please rotate your device to landscape</div>
+</div>
+
+<div id="header">
+  <h1>⚔️ 魔兽自走棋 ⚔️</h1>
+  <div class="sub">Warcraft Auto Chess — Battle Demo &nbsp;·&nbsp; <span id="version-badge">v0.326.8</span></div>
+</div>
+
+<div id="game">
+  <div id="main-area">
+
+    <!-- 羁绊面板 -->
+    <div id="synergy-panel">
+      <h3>🔗 羁绊</h3>
+      <div class="syn-row" id="syn-warrior">
+        <div class="syn-icon">⚔️</div>
+        <div class="syn-info">
+          <div class="syn-name">战士</div>
+          <div class="syn-count" id="sc-warrior">0/2</div>
+          <div class="syn-desc" id="sd-warrior">2件: 生命+200, 护甲+20</div>
+        </div>
+      </div>
+      <div class="syn-row" id="syn-mage">
+        <div class="syn-icon">🔮</div>
+        <div class="syn-info">
+          <div class="syn-name">法师</div>
+          <div class="syn-count" id="sc-mage">0/2</div>
+          <div class="syn-desc" id="sd-mage">2件: 法术伤害+30%</div>
+        </div>
+      </div>
+      <div class="syn-row" id="syn-priest">
+        <div class="syn-icon">✨</div>
+        <div class="syn-info">
+          <div class="syn-name">牧师</div>
+          <div class="syn-count" id="sc-priest">0/2</div>
+          <div class="syn-desc" id="sd-priest">2件: 每3秒治疗50</div>
+        </div>
+      </div>
+
+      <div class="syn-details">
+        <span class="cls">⚔️ 战士</span>
+        2件: 生命+200, 护甲+20<br>
+        4件: 生命+500, 护甲+40
+        <span class="cls">🔮 法师</span>
+        2件: 法术伤害+30%<br>
+        4件: 法术伤害+70%
+        <span class="cls">✨ 牧师</span>
+        2件: 每3秒恢复50血<br>
+        4件: 每3秒恢复150血
+      </div>
+    </div>
+
+    <!-- 战场 -->
+    <div id="battlefield-wrap">
+      <div class="zone-label enemy">⚔ 敌方阵营</div>
+      <div id="pixi-container"></div>
+      <div class="zone-label player">★ 我方阵营</div>
+    </div>
+
+    <!-- 右侧面板 -->
+    <div id="side-panel">
+      <div class="panel-box" id="bench-panel">
+        <h3>🎯 英雄选择</h3>
+        <div id="bench-grid"></div>
+        <div style="font-size:0.6em;color:#555;margin-top:8px;text-align:center">点击英雄选中 → 点击下方格子放置<br>再次点击格子取消</div>
+      </div>
+      <div class="panel-box" id="log-box">
+        <h3>📜 战斗日志</h3>
+        <div id="log-content"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 控制栏 -->
+  <div id="controls">
+    <div class="phase-badge" id="phase-badge">准备阶段</div>
+    <button class="btn primary" id="btn-start">⚔ 开始战斗</button>
+    <button class="btn" id="btn-auto">⚡ 随机配置</button>
+    <button class="btn" id="btn-reset">↺ 重置</button>
+    <span class="hint" id="hint-txt">选择英雄放置到绿色区域</span>
+    <span id="fps-counter"></span>
+  </div>
+</div>
+
+<!-- 结果遮罩 -->
+<div id="result-overlay">
+  <div id="result-txt"></div>
+  <div id="result-sub"></div>
+  <button class="btn primary" onclick="resetGame()">↺ 再来一局</button>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+//  常量
+// ============================================================
+const COLS = 7, ROWS = 4, CS = 92;
+const BF_W = COLS * CS, BF_H = ROWS * CS;
+const PLAYER_ROWS = [2, 3];
+const ENEMY_ROWS  = [0, 1];
+
+// 颜色
+const CLR = {
+  warrior:  0xe05050,
+  mage:     0x5599ee,
+  priest:   0xddcc55,
+  bg:       0x1a1008,
+  gridLine: 0x4a3520,
+  ezone:    0x331111,
+  pzone:    0x112211,
+  gold:     0xc8a84b,
+  hpGreen:  0x33cc44,
+  hpOrange: 0xee8800,
+  hpRed:    0xcc2222,
+  manaBlue: 0x3388ff,
+  barBg:    0x222222,
+  white:    0xffffff,
+  black:    0x000000,
+};
+
+// ============================================================
+//  角色定义
+// ============================================================
+const CHARS = {
+  garrosh: {
+    id:'garrosh', name:'加尔鲁什', title:'地狱咆哮',
+    cls:'warrior', emoji:'🪓',
+    baseHp:950, atk:82, atkMs:1100, range:1, armor:22,
+    ab:{ name:'战争怒吼', desc:'周围友军攻击力+35%，持续5秒', cost:80,
+         type:'buff', radius:2, buffAmt:0.35, dur:5000 }
+  },
+  varian: {
+    id:'varian', name:'瓦里安', title:'洛丹伦之王',
+    cls:'warrior', emoji:'⚔️',
+    baseHp:780, atk:105, atkMs:900, range:1, armor:16,
+    ab:{ name:'巨人粉碎', desc:'对目标造成320%物理伤害', cost:70,
+         type:'physical', mult:3.2 }
+  },
+  bolvar: {
+    id:'bolvar', name:'波瓦尔', title:'弗罗德拉根',
+    cls:'warrior', emoji:'🛡️',
+    baseHp:1150, atk:65, atkMs:1400, range:1, armor:38,
+    ab:{ name:'神圣之盾', desc:'获得3秒免疫护盾', cost:60,
+         type:'shield', dur:3000 }
+  },
+  jaina: {
+    id:'jaina', name:'吉安娜', title:'普劳德摩尔',
+    cls:'mage', emoji:'❄️',
+    baseHp:420, atk:115, atkMs:1350, range:4, armor:0,
+    ab:{ name:'暴风雪', desc:'对所有敌人造成160冰霜伤害', cost:100,
+         type:'aoe', dmg:160 }
+  },
+  khadgar: {
+    id:'khadgar', name:'卡德加', title:'法师',
+    cls:'mage', emoji:'🔮',
+    baseHp:465, atk:98, atkMs:1250, range:4, armor:0,
+    ab:{ name:'奥术飞弹', desc:'5枚飞弹各造成90伤害', cost:80,
+         type:'missiles', count:5, dmg:90 }
+  },
+  antonidas: {
+    id:'antonidas', name:'安东尼达斯', title:'大法师',
+    cls:'mage', emoji:'🔥',
+    baseHp:390, atk:125, atkMs:1500, range:4, armor:0,
+    ab:{ name:'爆炎术', desc:'对目标造成420火焰伤害', cost:90,
+         type:'magic', dmg:420 }
+  },
+  anduin: {
+    id:'anduin', name:'安度因', title:'乌瑞恩王子',
+    cls:'priest', emoji:'✨',
+    baseHp:530, atk:55, atkMs:1250, range:4, armor:10,
+    ab:{ name:'神圣之光', desc:'治疗血量最低友军210HP', cost:70,
+         type:'heal', amt:210 }
+  },
+  tyrande: {
+    id:'tyrande', name:'泰兰德', title:'语风',
+    cls:'priest', emoji:'🌙',
+    baseHp:580, atk:74, atkMs:1100, range:4, armor:13,
+    ab:{ name:'月神之矢', desc:'对目标造成220伤害并眩晕1.5秒', cost:75,
+         type:'stun', dmg:220, stunMs:1500 }
+  },
+  velen: {
+    id:'velen', name:'韦林', title:'大先知',
+    cls:'priest', emoji:'💫',
+    baseHp:500, atk:53, atkMs:1350, range:4, armor:9,
+    ab:{ name:'预言之愿', desc:'治疗全部友军130HP', cost:100,
+         type:'mass_heal', amt:130 }
+  },
+};
+
+const SYNERGIES = {
+  warrior:{ thresholds:[2,4], bonuses:{ 2:{hp:200,armor:20}, 4:{hp:500,armor:40} } },
+  mage:   { thresholds:[2,4], bonuses:{ 2:{sp:0.30},         4:{sp:0.70}         } },
+  priest: { thresholds:[2,4], bonuses:{ 2:{hpt:50},          4:{hpt:150}         } },
+};
+
+const ENEMY_PRESET = [
+  {id:'varian',   col:1, row:0},
+  {id:'antonidas',col:3, row:0},
+  {id:'tyrande',  col:5, row:0},
+  {id:'bolvar',   col:2, row:1},
+  {id:'khadgar',  col:4, row:1},
+];
+
+// ============================================================
+//  PixiJS 初始化
+// ============================================================
+const app = new PIXI.Application({
+  width: BF_W,
+  height: BF_H,
+  backgroundColor: CLR.bg,
+  antialias: true,
+  resolution: window.devicePixelRatio || 1,
+  autoDensity: true,
+});
+document.getElementById('pixi-container').appendChild(app.view);
+
+// Layers
+const gridLayer    = new PIXI.Container();
+const unitLayer    = new PIXI.Container();
+const effectLayer  = new PIXI.Container();
+const textLayer    = new PIXI.Container();
+app.stage.addChild(gridLayer, unitLayer, effectLayer, textLayer);
+
+// ============================================================
+//  Tween 引擎 (轻量级)
+// ============================================================
+const tweens = [];
+function tween(obj, props, duration, easing = 'easeOut', onDone = null) {
+  const start = {};
+  for (const k in props) start[k] = obj[k];
+  const tw = { obj, start, end: props, dur: duration, elapsed: 0, easing, onDone };
+  tweens.push(tw);
+  return tw;
+}
+function easeFn(name, t) {
+  switch(name) {
+    case 'easeOut':    return 1 - (1 - t) * (1 - t);
+    case 'easeIn':     return t * t;
+    case 'easeInOut':  return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+    case 'elastic':    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2,-10*t) * Math.sin((t*10-0.75)*(2*Math.PI)/3)+1;
+    case 'bounce':     return 1 - Math.abs(Math.cos(t * Math.PI * 2) * (1-t));
+    default:           return t;
+  }
+}
+function updateTweens(dt) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i];
+    tw.elapsed += dt;
+    let t = Math.min(1, tw.elapsed / tw.dur);
+    const e = easeFn(tw.easing, t);
+    for (const k in tw.end) {
+      tw.obj[k] = tw.start[k] + (tw.end[k] - tw.start[k]) * e;
+    }
+    if (t >= 1) {
+      tweens.splice(i, 1);
+      if (tw.onDone) tw.onDone();
+    }
+  }
+}
+
+// ============================================================
+//  粒子系统 (轻量级)
+// ============================================================
+const particles = [];
+function spawnParticles(x, y, color, count, opts = {}) {
+  for (let i = 0; i < count; i++) {
+    const g = new PIXI.Graphics();
+    const size = opts.size || (2 + Math.random() * 3);
+    g.beginFill(color, 0.9);
+    g.drawCircle(0, 0, size);
+    g.endFill();
+    g.x = x; g.y = y;
+    effectLayer.addChild(g);
+    particles.push({
+      gfx: g,
+      vx: (Math.random() - 0.5) * (opts.spread || 120),
+      vy: (Math.random() - 0.5) * (opts.spread || 120) - (opts.upward || 0),
+      life: 0,
+      maxLife: (opts.life || 0.6) + Math.random() * 0.3,
+      gravity: opts.gravity || 80,
+      shrink: opts.shrink !== false,
+      startSize: size,
+    });
+  }
+}
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life += dt;
+    p.gfx.x += p.vx * dt;
+    p.gfx.y += p.vy * dt;
+    p.vy += p.gravity * dt;
+    const t = p.life / p.maxLife;
+    p.gfx.alpha = Math.max(0, 1 - t);
+    if (p.shrink) p.gfx.scale.set(1 - t * 0.8);
+    if (p.life >= p.maxLife) {
+      p.gfx.destroy();
+      particles.splice(i, 1);
+    }
+  }
+}
+
+// ============================================================
+//  状态
+// ============================================================
+let G = newState();
+function newState() {
+  return {
+    phase: 'setup',
+    units: [],
+    uid: 1,
+    healTimer: 0,
+    selChar: null,
+    tick: 0,
+    synCounts: {warrior:0, mage:0, priest:0},
+    hoverCell: null,
+  };
+}
+
+// ============================================================
+//  网格绘制
+// ============================================================
+function drawGrid() {
+  gridLayer.removeChildren();
+
+  // 背景区域
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const isEnemy = ENEMY_ROWS.includes(r);
+      const g = new PIXI.Graphics();
+      g.beginFill(isEnemy ? CLR.ezone : CLR.pzone, 0.3);
+      g.drawRect(c * CS, r * CS, CS, CS);
+      g.endFill();
+
+      // Grid border
+      g.lineStyle(1, CLR.gridLine, 0.4);
+      g.drawRect(c * CS, r * CS, CS, CS);
+      gridLayer.addChild(g);
+    }
+  }
+
+  // 中间分割线
+  const divider = new PIXI.Graphics();
+  divider.lineStyle(2, CLR.gold, 0.5);
+  divider.moveTo(0, ROWS / 2 * CS);
+  divider.lineTo(BF_W, ROWS / 2 * CS);
+  gridLayer.addChild(divider);
+}
+
+// Hover highlight
+let hoverGfx = null;
+function showHoverCell(col, row) {
+  if (hoverGfx) { hoverGfx.destroy(); hoverGfx = null; }
+  if (col === null || !PLAYER_ROWS.includes(row) || G.phase !== 'setup') return;
+  hoverGfx = new PIXI.Graphics();
+  hoverGfx.beginFill(CLR.gold, 0.15);
+  hoverGfx.drawRect(col * CS, row * CS, CS, CS);
+  hoverGfx.endFill();
+  gridLayer.addChild(hoverGfx);
+}
+
+// ============================================================
+//  PixiJS单位渲染
+// ============================================================
+function cellCenter(col, row) {
+  return { x: col * CS + CS / 2, y: row * CS + CS / 2 };
+}
+
+function createUnitGfx(u) {
+  const container = new PIXI.Container();
+  const {x, y} = cellCenter(u.col, u.row);
+  container.x = x;
+  container.y = y;
+
+  const clrMap = { warrior: CLR.warrior, mage: CLR.mage, priest: CLR.priest };
+  const unitColor = clrMap[u.cls] || CLR.gold;
+  const halfW = (CS - 14) / 2;
+  const halfH = (CS - 14) / 2;
+
+  // Body background
+  const body = new PIXI.Graphics();
+  body.beginFill(0x111111, 0.9);
+  body.drawRoundedRect(-halfW, -halfH, halfW * 2, halfH * 2, 6);
+  body.endFill();
+  // Border
+  body.lineStyle(2.5, unitColor, u.team === 'enemy' ? 0.7 : 1);
+  body.drawRoundedRect(-halfW, -halfH, halfW * 2, halfH * 2, 6);
+
+  // Inner glow
+  const glow = new PIXI.Graphics();
+  glow.beginFill(unitColor, 0.08);
+  glow.drawRoundedRect(-halfW + 2, -halfH + 2, halfW * 2 - 4, halfH * 2 - 4, 4);
+  glow.endFill();
+
+  // Portrait / Emoji (character icon)
+  // Safe area: body is ±39px, name at y=16, bars at y=25/32
+  // Portrait: 42x42 centered at y=-18 fits within body without masking
+  let portrait;
+  const tex = TEXTURES[u.charId];
+  if (tex) {
+    portrait = new PIXI.Sprite(tex);
+    portrait.width = 42;
+    portrait.height = 42;
+    portrait.anchor.set(0.5);
+    portrait.y = -18;
+  } else {
+    portrait = new PIXI.Text(u.emoji, { fontSize: 30, align: 'center' });
+    portrait.anchor.set(0.5);
+    portrait.y = -6;
+  }
+
+  // Name label - auto-scale to fit within cell width
+  const maxNameW = halfW * 2 - 6;
+  const nameText = new PIXI.Text(u.name, {
+    fontSize: 12,
+    fill: 0xf0d080,
+    fontFamily: 'Georgia, serif',
+    align: 'center',
+  });
+  nameText.anchor.set(0.5);
+  nameText.y = 16;
+  // Scale down if name is wider than cell
+  if (nameText.width > maxNameW) {
+    nameText.scale.set(maxNameW / nameText.width);
+  }
+
+  // HP bar background
+  const barW = halfW * 2 - 8;
+  const hpBg = new PIXI.Graphics();
+  hpBg.beginFill(CLR.barBg);
+  hpBg.drawRoundedRect(-barW/2, halfH - 14, barW, 6, 2);
+  hpBg.endFill();
+
+  // HP bar fill
+  const hpBar = new PIXI.Graphics();
+  drawHpBar(hpBar, barW, u.hp / u.maxHp);
+  hpBar.x = -barW/2;
+  hpBar.y = halfH - 14;
+
+  // Mana bar background
+  const mnBg = new PIXI.Graphics();
+  mnBg.beginFill(CLR.barBg);
+  mnBg.drawRoundedRect(-barW/2, halfH - 7, barW, 4, 1);
+  mnBg.endFill();
+
+  // Mana bar fill
+  const mnBar = new PIXI.Graphics();
+  drawMnBar(mnBar, barW, u.mana / u.maxMana);
+  mnBar.x = -barW/2;
+  mnBar.y = halfH - 7;
+
+  container.addChild(body, glow, portrait, nameText, hpBg, hpBar, mnBg, mnBar);
+
+  // Enemy tint overlay
+  if (u.team === 'enemy') {
+    const overlay = new PIXI.Graphics();
+    overlay.beginFill(0x4444aa, 0.12);
+    overlay.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6);
+    overlay.endFill();
+    container.addChild(overlay);
+  }
+
+  container.sortableChildren = true;
+  unitLayer.addChild(container);
+
+  // Store references
+  u.gfx = container;
+  u.gfxParts = { body, portrait, nameText, hpBar, mnBar, barW, halfW, halfH };
+}
+
+function drawHpBar(g, barW, pct) {
+  g.clear();
+  pct = Math.max(0, Math.min(1, pct));
+  const color = pct > 0.5 ? CLR.hpGreen : pct > 0.25 ? CLR.hpOrange : CLR.hpRed;
+  if (pct > 0) {
+    g.beginFill(color);
+    g.drawRoundedRect(0, 0, barW * pct, 6, 2);
+    g.endFill();
+  }
+}
+
+function drawMnBar(g, barW, pct) {
+  g.clear();
+  pct = Math.max(0, Math.min(1, pct));
+  if (pct > 0) {
+    g.beginFill(CLR.manaBlue);
+    g.drawRoundedRect(0, 0, barW * pct, 4, 1);
+    g.endFill();
+  }
+}
+
+function refreshUnitBars(u) {
+  if (!u.gfxParts) return;
+  const { hpBar, mnBar, barW } = u.gfxParts;
+  drawHpBar(hpBar, barW, u.hp / u.maxHp);
+  drawMnBar(mnBar, barW, u.mana / u.maxMana);
+}
+
+// ============================================================
+//  浮动伤害数字 (PixiJS)
+// ============================================================
+function showDmgText(u, val, type) {
+  if (!u.gfx) return;
+  const colors = { phys: 0xffcc22, magic: 0x88bbff, heal: 0x44ee66, info: 0xffdd88 };
+  const color = colors[type] || 0xffffff;
+  const size = type === 'heal' ? 13 : 15;
+  const txt = new PIXI.Text(typeof val === 'number' ? `-${val}` : val, {
+    fontSize: size,
+    fontFamily: 'Georgia, serif',
+    fontWeight: 'bold',
+    fill: color,
+    stroke: 0x000000,
+    strokeThickness: 3,
+  });
+  txt.anchor.set(0.5);
+  txt.x = u.gfx.x + (Math.random() - 0.5) * 20;
+  txt.y = u.gfx.y - 10;
+  txt.alpha = 1;
+  textLayer.addChild(txt);
+
+  tween(txt, { y: txt.y - 55, alpha: 0 }, 1.0, 'easeOut', () => txt.destroy());
+}
+
+// ============================================================
+//  技能特效 (PixiJS粒子+文字)
+// ============================================================
+function showSpellFx(u, emoji, color) {
+  if (!u.gfx) return;
+
+  // Emoji burst
+  const fx = new PIXI.Text(emoji, { fontSize: 36 });
+  fx.anchor.set(0.5);
+  fx.x = u.gfx.x;
+  fx.y = u.gfx.y - 5;
+  fx.alpha = 1;
+  fx.scale.set(0.5);
+  effectLayer.addChild(fx);
+  tween(fx, { y: fx.y - 20 }, 0.15, 'easeOut', () => {
+    tween(fx, { alpha: 0 }, 0.5, 'easeOut', () => fx.destroy());
+  });
+  tween(fx.scale, { x: 1.6, y: 1.6 }, 0.6, 'elastic');
+
+  // Particles
+  spawnParticles(u.gfx.x, u.gfx.y, color || CLR.gold, 12, { spread: 80, life: 0.5 });
+}
+
+// Shield ring effect
+function addShieldGfx(u) {
+  if (u._shieldGfx) { u._shieldGfx.destroy(); u._shieldGfx = null; }
+  const ring = new PIXI.Graphics();
+  const hw = u.gfxParts.halfW + 4;
+  const hh = u.gfxParts.halfH + 4;
+  ring.lineStyle(3, 0xddddff, 0.85);
+  ring.drawRoundedRect(-hw, -hh, hw * 2, hh * 2, 8);
+  u.gfx.addChild(ring);
+  u._shieldGfx = ring;
+  u._shieldPulse = 0;
+}
+function removeShieldGfx(u) {
+  if (u._shieldGfx) { u._shieldGfx.destroy(); u._shieldGfx = null; }
+}
+
+// Attack lunge animation
+function animAttack(u, tgt) {
+  if (!u.gfx || !tgt.gfx) return;
+  const origX = u.gfx.x, origY = u.gfx.y;
+  const dx = tgt.gfx.x - u.gfx.x;
+  const dy = tgt.gfx.y - u.gfx.y;
+  const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+  const lungeX = origX + (dx / dist) * 15;
+  const lungeY = origY + (dy / dist) * 15;
+
+  tween(u.gfx, { x: lungeX, y: lungeY }, 0.08, 'easeOut', () => {
+    tween(u.gfx, { x: origX, y: origY }, 0.12, 'easeOut');
+  });
+  tween(u.gfx.scale, { x: 1.12, y: 1.12 }, 0.08, 'easeOut', () => {
+    tween(u.gfx.scale, { x: 1, y: 1 }, 0.12, 'easeOut');
+  });
+}
+
+// Hit flash
+function animHit(u) {
+  if (!u.gfxParts) return;
+  const body = u.gfxParts.body;
+  body.tint = 0xff4444;
+  setTimeout(() => { if (body && !body.destroyed) body.tint = 0xffffff; }, 120);
+}
+
+// Cast glow
+function animCast(u) {
+  if (!u.gfx) return;
+  const glow = new PIXI.Graphics();
+  const hw = u.gfxParts.halfW + 6;
+  const hh = u.gfxParts.halfH + 6;
+  glow.beginFill(0xffee55, 0.3);
+  glow.drawRoundedRect(-hw, -hh, hw * 2, hh * 2, 10);
+  glow.endFill();
+  u.gfx.addChild(glow);
+  tween(glow, { alpha: 0 }, 0.6, 'easeOut', () => glow.destroy());
+
+  // Spark particles
+  const clrMap = { warrior: 0xff6644, mage: 0x66aaff, priest: 0xffee44 };
+  spawnParticles(u.gfx.x, u.gfx.y, clrMap[u.cls] || CLR.gold, 8, { spread: 60, upward: 40, life: 0.4 });
+}
+
+// Death animation
+function animDeath(u) {
+  if (!u.gfx) return;
+  const cx = u.gfx.x, cy = u.gfx.y;
+  spawnParticles(cx, cy, CLR.warrior, 20, { spread: 100, life: 0.8, gravity: 120 });
+  tween(u.gfx, { alpha: 0 }, 0.4, 'easeIn');
+  tween(u.gfx.scale, { x: 0.3, y: 0.3 }, 0.4, 'easeIn', () => {
+    u.gfx.destroy();
+    u.gfx = null;
+    u.gfxParts = null;
+  });
+}
+
+// ============================================================
+//  单位逻辑
+// ============================================================
+function makeUnit(ch, col, row, team) {
+  const synBonus = team === 'player' ? calcSynBonus(ch.cls) : {};
+  const extraHp  = synBonus.hp || 0;
+  return {
+    uid: G.uid++,
+    charId: ch.id,
+    name: ch.name,
+    cls:  ch.cls,
+    emoji: ch.emoji,
+    team, col, row,
+    maxHp: ch.baseHp + extraHp,
+    hp:    ch.baseHp + extraHp,
+    atk:   ch.atk,
+    atkMs: ch.atkMs,
+    range: ch.range,
+    armor: ch.armor + (synBonus.armor || 0),
+    mana:  0,
+    maxMana: ch.ab.cost,
+    ab:    ch.ab,
+    lastAtk:  0,
+    lastAb:   0,
+    stunUntil: 0,
+    shielded:  false,
+    shieldEnd: 0,
+    atkMult:   1.0,
+    buffEnd:   0,
+    gfx: null,
+    gfxParts: null,
+    // Smooth position for rendering
+    renderX: col * CS + CS/2,
+    renderY: row * CS + CS/2,
+  };
+}
+
+function calcSynBonus(cls) {
+  const cnt = G.synCounts[cls] || 0;
+  const syn = SYNERGIES[cls];
+  let bonus = {};
+  syn.thresholds.forEach(t => { if (cnt >= t) bonus = { ...bonus, ...syn.bonuses[t] }; });
+  return bonus;
+}
+
+function spawnUnit(u) {
+  G.units.push(u);
+  createUnitGfx(u);
+}
+
+function removeUnit(u) {
+  G.units = G.units.filter(x => x.uid !== u.uid);
+  if (u.gfx) { u.gfx.destroy(); u.gfx = null; u.gfxParts = null; }
+}
+
+// ============================================================
+//  DOM辅助面板
+// ============================================================
+function buildBench() {
+  const grid = document.getElementById('bench-grid');
+  grid.innerHTML = '';
+  Object.values(CHARS).forEach(ch => {
+    const card = document.createElement('div');
+    card.className = `bench-card ${ch.cls}`;
+    card.id = `bc-${ch.id}`;
+    card.innerHTML = `<div class="bc-emoji">${ch.emoji}</div><div class="bc-name">${ch.name}</div><div class="bc-class">${clsLabel(ch.cls)}</div>`;
+    card.title = `${ch.name}·${ch.title}\n职业:${clsLabel(ch.cls)}\nHP:${ch.baseHp} 攻击:${ch.atk} 射程:${ch.range}\n技能:${ch.ab.name}\n${ch.ab.desc}`;
+    card.addEventListener('click', () => selectChar(ch.id));
+    grid.appendChild(card);
+  });
+}
+
+function clsLabel(cls) { return {warrior:'战士', mage:'法师', priest:'牧师'}[cls] || cls; }
+
+function selectChar(charId) {
+  if (G.phase !== 'setup') return;
+  const card = document.getElementById(`bc-${charId}`);
+  if (card.classList.contains('placed')) return;
+  document.querySelectorAll('.bench-card').forEach(c => c.classList.remove('selected'));
+  if (G.selChar === charId) { G.selChar = null; return; }
+  card.classList.add('selected');
+  G.selChar = charId;
+  addLog(`选择了 ${CHARS[charId].name}，点击绿色格子放置`, 'sys');
+}
+
+function updateSynPanel() {
+  const pu = G.units.filter(u => u.team === 'player');
+  const cnt = {warrior:0, mage:0, priest:0};
+  pu.forEach(u => { cnt[u.cls]++; });
+  G.synCounts = cnt;
+
+  ['warrior','mage','priest'].forEach(cls => {
+    const c   = cnt[cls];
+    const syn = SYNERGIES[cls];
+    const next = syn.thresholds.find(t => c < t) || syn.thresholds[syn.thresholds.length-1];
+    document.getElementById(`sc-${cls}`).textContent = `${c}/${next}`;
+    const row = document.getElementById(`syn-${cls}`);
+    if (c >= syn.thresholds[0]) row.classList.add('active');
+    else row.classList.remove('active');
+  });
+}
+
+function addLog(txt, type='') {
+  const box = document.getElementById('log-content');
+  const el  = document.createElement('div');
+  el.className = `log-e ${type}`;
+  el.textContent = txt;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  while (box.children.length > 120) box.removeChild(box.firstChild);
+}
+
+function activeSyn(team) {
+  const pu = G.units.filter(u => u.team === team && u.hp > 0);
+  const cnt = {warrior:0, mage:0, priest:0};
+  pu.forEach(u => { cnt[u.cls]++; });
+  const result = {};
+  Object.keys(cnt).forEach(cls => {
+    const syn = SYNERGIES[cls];
+    syn.thresholds.forEach(t => { if (cnt[cls] >= t) result[cls] = syn.bonuses[t]; });
+  });
+  return result;
+}
+
+function spellPower(team) {
+  const s = activeSyn(team);
+  return s.mage ? (s.mage.sp || 0) : 0;
+}
+
+// ============================================================
+//  PixiJS 交互 (点击放置)
+// ============================================================
+app.stage.eventMode = 'static';
+app.stage.hitArea = new PIXI.Rectangle(0, 0, BF_W, BF_H);
+
+app.stage.on('pointermove', e => {
+  if (G.phase !== 'setup') { showHoverCell(null, null); return; }
+  const pos = e.getLocalPosition(app.stage);
+  const col = Math.floor(pos.x / CS);
+  const row = Math.floor(pos.y / CS);
+  if (col >= 0 && col < COLS && row >= 0 && row < ROWS) showHoverCell(col, row);
+  else showHoverCell(null, null);
+});
+
+app.stage.on('pointerdown', e => {
+  if (G.phase !== 'setup') return;
+  const pos = e.getLocalPosition(app.stage);
+  const col = Math.floor(pos.x / CS);
+  const row = Math.floor(pos.y / CS);
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+
+  if (!PLAYER_ROWS.includes(row)) {
+    addLog('只能在我方区域（下方2行）放置英雄', 'sys'); return;
+  }
+
+  const existing = G.units.find(u => u.team === 'player' && u.col === col && u.row === row);
+
+  if (!G.selChar) {
+    if (existing) { removeUnit(existing); updateSynPanel(); }
+    return;
+  }
+
+  const already = G.units.find(u => u.team === 'player' && u.charId === G.selChar);
+  if (already) {
+    addLog(`${CHARS[G.selChar].name} 已在场上`, 'sys'); return;
+  }
+  if (existing) { removeUnit(existing); }
+
+  const ch = CHARS[G.selChar];
+  const u  = makeUnit(ch, col, row, 'player');
+  spawnUnit(u);
+  document.getElementById(`bc-${G.selChar}`).classList.add('placed');
+  document.querySelectorAll('.bench-card').forEach(c => c.classList.remove('selected'));
+  G.selChar = null;
+  updateSynPanel();
+  addLog(`${ch.name} 已入场！`, 'sys');
+});
+
+// ============================================================
+//  控制按钮
+// ============================================================
+document.getElementById('btn-start').addEventListener('click', startBattle);
+document.getElementById('btn-reset').addEventListener('click', resetGame);
+document.getElementById('btn-auto').addEventListener('click', autoFill);
+
+function autoFill() {
+  if (G.phase !== 'setup') return;
+  G.units.filter(u => u.team === 'player').forEach(u => {
+    if (u.gfx) { u.gfx.destroy(); u.gfx = null; }
+    const card = document.getElementById(`bc-${u.charId}`);
+    if (card) card.classList.remove('placed', 'selected');
+  });
+  G.units = G.units.filter(u => u.team === 'enemy');
+
+  const allIds = Object.keys(CHARS).sort(() => Math.random() - 0.5);
+  const picks  = allIds.slice(0, 5);
+  const slots  = [{col:0,row:3},{col:2,row:3},{col:4,row:3},{col:6,row:3},{col:1,row:2},{col:3,row:2},{col:5,row:2}];
+
+  picks.forEach((id, i) => {
+    const u = makeUnit(CHARS[id], slots[i].col, slots[i].row, 'player');
+    spawnUnit(u);
+    document.getElementById(`bc-${id}`)?.classList.add('placed');
+  });
+  updateSynPanel();
+  addLog('随机阵容已就绪！', 'sys');
+}
+
+// ============================================================
+//  战斗逻辑
+// ============================================================
+function startBattle() {
+  const pu = G.units.filter(u => u.team === 'player');
+  if (!pu.length) { addLog('请先放置至少一个英雄！', 'sys'); return; }
+
+  G.phase = 'battle';
+  G.healTimer = 0;
+  document.getElementById('phase-badge').textContent = '⚔ 战斗中';
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-auto').disabled  = true;
+  document.getElementById('hint-txt').textContent = '';
+  showHoverCell(null, null);
+  addLog('━━━ 战斗开始！━━━', 'sys');
+
+  // 应用战士HP羁绊
+  const ps = activeSyn('player');
+  if (ps.warrior) {
+    G.units.filter(u => u.team === 'player' && u.cls === 'warrior').forEach(u => {
+      u.maxHp += ps.warrior.hp || 0;
+      u.hp    += ps.warrior.hp || 0;
+      refreshUnitBars(u);
+    });
+  }
+}
+
+function battleUpdate(dt) {
+  if (G.phase !== 'battle') return;
+
+  const now = Date.now();
+  const alive = G.units.filter(u => u.hp > 0);
+  const pa = alive.filter(u => u.team === 'player');
+  const ea = alive.filter(u => u.team === 'enemy');
+
+  if (!pa.length || !ea.length) { endBattle(pa.length ? 'player' : 'enemy'); return; }
+
+  // Priest heal timer
+  G.healTimer += dt;
+  if (G.healTimer >= 3.0) {
+    G.healTimer -= 3.0;
+    priestHeal();
+  }
+
+  alive.forEach(u => {
+    if (u.stunUntil > now) return;
+    if (u.shielded && u.shieldEnd < now) {
+      u.shielded = false;
+      removeShieldGfx(u);
+    }
+    if (u.buffEnd < now && u.atkMult > 1) u.atkMult = 1.0;
+
+    const foes  = u.team === 'player' ? ea : pa;
+    const mates = u.team === 'player' ? pa : ea;
+    if (!foes.length) return;
+
+    const tgt  = nearest(u, foes);
+    const dist = chebyshev(u, tgt);
+
+    if (u.mana >= u.maxMana && now - u.lastAb > 800) {
+      castAbility(u, tgt, foes, mates, now);
+      return;
+    }
+    if (dist <= u.range) {
+      if (now - u.lastAtk >= u.atkMs) doAtk(u, tgt, now);
+    } else {
+      // Move every ~420ms (3 ticks at 140ms)
+      G.tick++;
+      if (G.tick % 3 === 0) moveStep(u, tgt);
+    }
+  });
+
+  // Smooth unit position update
+  alive.forEach(u => {
+    if (!u.gfx) return;
+    const target = cellCenter(u.col, u.row);
+    // Lerp for smooth movement
+    u.gfx.x += (target.x - u.gfx.x) * Math.min(1, dt * 8);
+    u.gfx.y += (target.y - u.gfx.y) * Math.min(1, dt * 8);
+
+    // Shield pulse
+    if (u._shieldGfx && !u._shieldGfx.destroyed) {
+      u._shieldPulse = (u._shieldPulse || 0) + dt * 4;
+      u._shieldGfx.alpha = 0.6 + Math.sin(u._shieldPulse) * 0.3;
+    }
+  });
+}
+
+function priestHeal() {
+  ['player','enemy'].forEach(team => {
+    const s = activeSyn(team);
+    if (!s.priest) return;
+    const hpt = s.priest.hpt;
+    G.units.filter(u => u.team === team && u.hp > 0).forEach(u => {
+      const h = Math.min(hpt, u.maxHp - u.hp);
+      if (h > 0) { u.hp += h; showDmgText(u, `+${h}`, 'heal'); refreshUnitBars(u); }
+    });
+    addLog(`${team==='player'?'我方':'敌方'}牧师羁绊治疗 ${hpt} HP`, 'heal');
+  });
+}
+
+function doAtk(u, tgt, now) {
+  u.lastAtk = now;
+  let dmg = Math.round(u.atk * u.atkMult - tgt.armor * 0.45);
+  dmg = Math.max(1, dmg);
+
+  animAttack(u, tgt);
+
+  if (tgt.shielded) {
+    tgt.shielded = false;
+    removeShieldGfx(tgt);
+    showDmgText(tgt, '格挡!', 'info');
+    addLog(`${u.name} 攻击 ${tgt.name}，被神盾格挡`, 'atk');
+    spawnParticles(tgt.gfx?.x || 0, tgt.gfx?.y || 0, 0xddddff, 6, { spread: 40, life: 0.3 });
+  } else {
+    applyDmg(tgt, dmg, 'phys');
+    addLog(`${u.name} → ${tgt.name} 造成 ${dmg} 伤害`, 'atk');
+    animHit(tgt);
+  }
+
+  u.mana   = Math.min(u.maxMana, u.mana + 15);
+  tgt.mana = Math.min(tgt.maxMana, tgt.mana + 8);
+  refreshUnitBars(u);
+  refreshUnitBars(tgt);
+}
+
+function castAbility(u, tgt, foes, mates, now) {
+  u.mana   = 0;
+  u.lastAb = now;
+  animCast(u);
+  addLog(`✦ ${u.name} 释放【${u.ab.name}】`, 'ability');
+
+  const sp = spellPower(u.team);
+
+  switch (u.ab.type) {
+    case 'buff':
+      mates.filter(m => m.hp > 0 && chebyshev(u,m) <= u.ab.radius).forEach(m => {
+        m.atkMult = 1 + u.ab.buffAmt;
+        m.buffEnd = now + u.ab.dur;
+        showDmgText(m, `+${Math.round(u.ab.buffAmt*100)}%ATK`, 'heal');
+        if (m.gfx) spawnParticles(m.gfx.x, m.gfx.y, 0xff6644, 5, { spread: 30, upward: 30, life: 0.4 });
+      });
+      break;
+
+    case 'physical':
+      if (tgt.hp > 0) {
+        const d = Math.round(u.atk * u.ab.mult);
+        applyDmg(tgt, d, 'phys');
+        showSpellFx(tgt, '💥', 0xff4422);
+        animHit(tgt);
+      }
+      break;
+
+    case 'shield':
+      u.shielded  = true;
+      u.shieldEnd = now + u.ab.dur;
+      addShieldGfx(u);
+      showDmgText(u, '神盾！', 'heal');
+      break;
+
+    case 'aoe':
+      foes.filter(f => f.hp > 0).forEach(f => {
+        const d = Math.round(u.ab.dmg * (1 + sp));
+        applyDmg(f, d, 'magic');
+        showSpellFx(f, '❄️', 0x88ccff);
+        animHit(f);
+      });
+      break;
+
+    case 'missiles':
+      for (let i = 0; i < u.ab.count; i++) {
+        const living = foes.filter(f => f.hp > 0);
+        if (!living.length) break;
+        const r = living[Math.floor(Math.random() * living.length)];
+        const d = Math.round(u.ab.dmg * (1 + sp));
+        setTimeout(() => {
+          if (r.hp > 0) {
+            applyDmg(r, d, 'magic');
+            showSpellFx(r, '🔮', 0xaa66ff);
+            animHit(r);
+          }
+        }, i * 140);
+      }
+      break;
+
+    case 'magic':
+      if (tgt.hp > 0) {
+        const d = Math.round(u.ab.dmg * (1 + sp));
+        applyDmg(tgt, d, 'magic');
+        showSpellFx(tgt, '🔥', 0xff6622);
+        animHit(tgt);
+      }
+      break;
+
+    case 'heal': {
+      const lowest = mates.filter(m => m.hp > 0).sort((a,b) => a.hp/a.maxHp - b.hp/b.maxHp)[0];
+      if (lowest) {
+        const h = Math.min(u.ab.amt, lowest.maxHp - lowest.hp);
+        lowest.hp += h;
+        showDmgText(lowest, `+${h}`, 'heal');
+        showSpellFx(lowest, '✨', 0x44ee66);
+        refreshUnitBars(lowest);
+        addLog(`${u.name} 治疗了 ${lowest.name} +${h}`, 'heal');
+      }
+      break;
+    }
+
+    case 'stun':
+      if (tgt.hp > 0) {
+        const d = Math.round(u.ab.dmg * (1 + sp));
+        applyDmg(tgt, d, 'magic');
+        tgt.stunUntil = now + u.ab.stunMs;
+        showSpellFx(tgt, '🌙', 0xaaaaff);
+        showDmgText(tgt, '眩晕!', 'info');
+        addLog(`${tgt.name} 被眩晕 ${u.ab.stunMs/1000}秒`, 'ability');
+        animHit(tgt);
+      }
+      break;
+
+    case 'mass_heal':
+      mates.filter(m => m.hp > 0).forEach(m => {
+        const h = Math.min(u.ab.amt, m.maxHp - m.hp);
+        m.hp += h;
+        showDmgText(m, `+${h}`, 'heal');
+        refreshUnitBars(m);
+        if (m.gfx) spawnParticles(m.gfx.x, m.gfx.y, 0x44ee66, 4, { spread: 25, upward: 20, life: 0.3 });
+      });
+      showSpellFx(u, '💫', 0xffee44);
+      addLog(`${u.name} 治愈了所有友军`, 'heal');
+      break;
+  }
+
+  refreshUnitBars(u);
+}
+
+function applyDmg(u, dmg, type) {
+  if (u.hp <= 0) return;
+  u.hp = Math.max(0, u.hp - dmg);
+  showDmgText(u, dmg, type);
+  refreshUnitBars(u);
+  if (u.hp <= 0) killUnit(u);
+}
+
+function killUnit(u) {
+  addLog(`${u.name} 阵亡！`, 'death');
+  animDeath(u);
+}
+
+// ============================================================
+//  移动
+// ============================================================
+function moveStep(u, tgt) {
+  const dx = tgt.col - u.col, dy = tgt.row - u.row;
+  let nc = u.col, nr = u.row;
+  if (Math.abs(dx) >= Math.abs(dy)) nc += Math.sign(dx);
+  else nr += Math.sign(dy);
+
+  const blocked = G.units.find(x => x.hp > 0 && x.uid !== u.uid && x.col === nc && x.row === nr);
+  if (!blocked && nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
+    u.col = nc; u.row = nr;
+  }
+}
+
+function nearest(u, list) {
+  return list.reduce((best, x) => chebyshev(u,x) < chebyshev(u,best) ? x : best);
+}
+function chebyshev(a, b) {
+  return Math.max(Math.abs(a.col-b.col), Math.abs(a.row-b.row));
+}
+
+// ============================================================
+//  结束
+// ============================================================
+function endBattle(winner) {
+  G.phase = 'result';
+  addLog(`━━━ 战斗结束！${winner==='player'?'我方':'敌方'}获胜！━━━`, 'sys');
+
+  // Victory / defeat particles
+  const color = winner === 'player' ? 0xffd700 : 0xcc4444;
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      spawnParticles(BF_W/2 + (Math.random()-0.5)*300, BF_H/2, color, 25, { spread: 150, upward: 80, life: 1.2, gravity: 50 });
+    }, i * 200);
+  }
+
+  setTimeout(() => {
+    const overlay = document.getElementById('result-overlay');
+    const txt = document.getElementById('result-txt');
+    const sub = document.getElementById('result-sub');
+    if (winner === 'player') {
+      txt.textContent = '🏆 胜利！';
+      txt.style.color = '#ffd700';
+      sub.textContent = '联盟万岁！';
+    } else {
+      txt.textContent = '💀 败北…';
+      txt.style.color = '#cc4444';
+      sub.textContent = '为了部落！';
+    }
+    overlay.classList.add('show');
+  }, 1200);
+}
+
+function resetGame() {
+  // Destroy all unit graphics
+  G.units.forEach(u => {
+    if (u.gfx) { u.gfx.destroy(); u.gfx = null; }
+  });
+  // Clear layers
+  unitLayer.removeChildren();
+  effectLayer.removeChildren();
+  textLayer.removeChildren();
+  // Clear tweens and particles
+  tweens.length = 0;
+  particles.length = 0;
+
+  G = newState();
+  document.getElementById('result-overlay').classList.remove('show');
+  document.getElementById('phase-badge').textContent = '准备阶段';
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-auto').disabled  = false;
+  document.getElementById('hint-txt').textContent = '选择英雄放置到绿色区域';
+  document.getElementById('log-content').innerHTML = '';
+
+  drawGrid();
+  buildBench();
+  placeEnemies();
+  updateSynPanel();
+  addLog('已重置，重新开始吧！', 'sys');
+}
+
+function placeEnemies() {
+  ENEMY_PRESET.forEach(p => {
+    const u = makeUnit(CHARS[p.id], p.col, p.row, 'enemy');
+    spawnUnit(u);
+  });
+}
+
+// ============================================================
+//  主循环 (60fps PixiJS ticker)
+// ============================================================
+let fpsFrames = 0, fpsTime = 0;
+app.ticker.add((delta) => {
+  const dt = delta / 60; // Convert to seconds
+
+  updateTweens(dt);
+  updateParticles(dt);
+  battleUpdate(dt);
+
+  // FPS counter
+  fpsTime += dt;
+  fpsFrames++;
+  if (fpsTime >= 1.0) {
+    document.getElementById('fps-counter').textContent = `${Math.round(fpsFrames / fpsTime)} FPS`;
+    fpsFrames = 0;
+    fpsTime = 0;
+  }
+});
+
+// ============================================================
+//  Canvas自适应缩放 (手机横屏适配)
+// ============================================================
+function resizeCanvas() {
+  const container = document.getElementById('pixi-container');
+  const isMobile = window.innerWidth <= 900;
+
+  if (!isMobile) {
+    // Desktop: use original size
+    container.style.width = '';
+    container.style.height = '';
+    app.renderer.resize(BF_W, BF_H);
+    app.stage.scale.set(1);
+    return;
+  }
+
+  // Mobile landscape: fit canvas into available space
+  // Panels: synergy(~94px) + side(~114px) + gaps+borders(~20px)
+  const panelsW = 94 + 114 + 20;
+  const availW = window.innerWidth - panelsW;
+  // Height: viewport - header(~24px) - controls(~26px) - zone labels(~16px) - padding(~10px)
+  const availH = window.innerHeight - 76;
+
+  const scaleX = availW / BF_W;
+  const scaleY = availH / BF_H;
+  const scale = Math.min(scaleX, scaleY, 1);
+
+  const displayW = Math.floor(BF_W * scale);
+  const displayH = Math.floor(BF_H * scale);
+
+  container.style.width = displayW + 'px';
+  container.style.height = displayH + 'px';
+
+  app.renderer.resize(BF_W, BF_H);
+  app.view.style.width = displayW + 'px';
+  app.view.style.height = displayH + 'px';
+}
+
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => {
+  setTimeout(resizeCanvas, 200);
+});
+
+// ============================================================
+//  初始化
+// ============================================================
+const TEXTURES = {};
+const PORTRAIT_IDS = ['garrosh','varian','bolvar','jaina','khadgar','antonidas','anduin','tyrande','velen'];
+
+async function preloadTextures() {
+  for (const id of PORTRAIT_IDS) {
+    try {
+      TEXTURES[id] = await PIXI.Assets.load(`assets/${id}.png`);
+    } catch(e) {
+      console.warn('texture load failed:', id, e);
+    }
+  }
+  console.log('Textures loaded:', Object.keys(TEXTURES));
+}
+
+function init() {
+  drawGrid();
+  buildBench();
+  placeEnemies();
+  updateSynPanel();
+  resizeCanvas();
+  addLog('欢迎来到魔兽自走棋！', 'sys');
+  addLog('选择英雄放到绿色区域，然后开始战斗。', 'sys');
+}
+
+preloadTextures().then(() => init()).catch(() => init());
+</script>
+</body>
+</html>
