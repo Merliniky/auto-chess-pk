@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>魔兽自走棋 - 战斗Demo</title>
+<title>魔兽自走棋PK - 闯关模式</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,23 +38,37 @@ body {
 #header {
   width: 100%;
   text-align: center;
-  padding: 14px 0 10px;
+  padding: 8px 0 6px;
   background: linear-gradient(180deg, #2a1a08 0%, #110a04 100%);
   border-bottom: 2px solid var(--gold-dark);
   box-shadow: 0 4px 20px rgba(0,0,0,0.6);
 }
 #header h1 {
-  font-size: 1.9em;
+  font-size: 1.5em;
   color: var(--gold);
   text-shadow: 0 0 24px rgba(200,168,75,0.6);
   letter-spacing: 5px;
 }
-#header .sub {
-  font-size: 0.75em;
-  color: #886633;
-  letter-spacing: 3px;
-  margin-top: 3px;
+
+/* ===== STATUS BAR ===== */
+#status-bar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 6px 10px;
+  background: rgba(20,14,6,0.9);
+  border-bottom: 1px solid var(--gold-dark);
+  font-size: 0.82em;
+  flex-wrap: wrap;
 }
+.status-item { display: flex; align-items: center; gap: 4px; }
+.status-label { color: #888; }
+.status-val { color: var(--gold-light); font-weight: bold; }
+.status-val.gold-val { color: #ffd700; }
+.lv-warrior { color: var(--warrior-color); }
+.lv-mage { color: var(--mage-color); }
+.lv-priest { color: var(--priest-color); }
 
 /* ===== LAYOUT ===== */
 #game {
@@ -63,8 +77,8 @@ body {
   align-items: center;
   width: 100%;
   max-width: 1200px;
-  padding: 12px;
-  gap: 10px;
+  padding: 8px;
+  gap: 6px;
 }
 #main-area {
   display: flex;
@@ -73,87 +87,13 @@ body {
   align-items: flex-start;
 }
 
-/* ===== SYNERGY PANEL ===== */
-#synergy-panel {
-  width: 190px;
+/* ===== LEFT PANEL (Synergy + Upgrade) ===== */
+#left-panel {
+  width: 200px;
   flex-shrink: 0;
-  background: var(--bg-panel);
-  border: 1px solid var(--gold-dark);
-  border-radius: 5px;
-  padding: 10px;
-}
-#synergy-panel h3 {
-  color: var(--gold);
-  font-size: 0.85em;
-  text-align: center;
-  letter-spacing: 2px;
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--gold-dark);
-}
-.syn-row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  padding: 7px 6px;
-  border-radius: 4px;
-  margin-bottom: 5px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid transparent;
-  transition: all 0.3s;
-}
-.syn-row.active { border-color: var(--gold-dark); background: rgba(200,168,75,0.08); }
-.syn-icon { font-size: 1.3em; }
-.syn-info { flex: 1; min-width: 0; }
-.syn-name { font-size: 0.72em; color: var(--gold); }
-.syn-count { font-size: 0.65em; color: #777; }
-.syn-row.active .syn-count { color: var(--gold-light); }
-.syn-desc { font-size: 0.6em; color: #666; margin-top: 2px; line-height: 1.3; }
-.syn-row.active .syn-desc { color: #aaa; }
-
-.syn-details {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--gold-dark);
-  font-size: 0.63em;
-  color: #777;
-  line-height: 1.6;
-}
-.syn-details .cls { color: var(--gold); font-size: 1.05em; margin-top: 6px; display: block; }
-
-/* ===== BATTLEFIELD ===== */
-#battlefield-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-.zone-label {
-  font-size: 0.72em;
-  letter-spacing: 2px;
-  color: #555;
-}
-.zone-label.enemy { color: #aa3333; }
-.zone-label.player { color: #228833; }
-
-#pixi-container {
-  border: 2px solid var(--gold-dark);
-  border-radius: 5px;
-  overflow: hidden;
-  box-shadow: 0 6px 30px rgba(0,0,0,0.8);
-}
-#pixi-container canvas {
-  display: block;
-}
-
-/* ===== SIDE PANEL ===== */
-#side-panel {
-  width: 215px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 .panel-box {
   background: var(--bg-panel);
@@ -169,6 +109,87 @@ body {
   padding-bottom: 5px;
   border-bottom: 1px solid var(--gold-dark);
   text-align: center;
+}
+
+/* Synergy rows */
+.syn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid transparent;
+  transition: all 0.3s;
+}
+.syn-row.active { border-color: var(--gold-dark); background: rgba(200,168,75,0.08); }
+.syn-icon { font-size: 1.2em; }
+.syn-info { flex: 1; min-width: 0; }
+.syn-name { font-size: 0.72em; color: var(--gold); }
+.syn-count { font-size: 0.65em; color: #777; }
+.syn-row.active .syn-count { color: var(--gold-light); }
+
+/* Upgrade panel */
+.upgrade-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(107,79,26,0.3);
+}
+.upgrade-info { flex: 1; min-width: 0; }
+.upgrade-cls { font-size: 0.75em; }
+.upgrade-lv { font-size: 0.65em; color: #999; }
+.upgrade-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--gold-dark);
+  background: linear-gradient(180deg,#2a1a08,#160e04);
+  color: var(--gold);
+  font-family: Georgia, serif;
+  font-size: 0.65em;
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.upgrade-btn:hover:not(:disabled) { border-color: var(--gold); box-shadow: 0 0 8px rgba(200,168,75,0.3); }
+.upgrade-btn:disabled { opacity: 0.35; cursor: default; }
+.upgrade-btn.maxed { background: rgba(100,80,30,0.3); color: #666; }
+
+/* ===== BATTLEFIELD ===== */
+#battlefield-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.zone-label {
+  font-size: 0.72em;
+  letter-spacing: 2px;
+  color: #555;
+}
+.zone-label.enemy { color: #aa3333; }
+.zone-label.player { color: #228833; }
+
+#pixi-container {
+  border: 2px solid var(--gold-dark);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 6px 30px rgba(0,0,0,0.8);
+}
+#pixi-container canvas { display: block; }
+
+/* ===== SIDE PANEL ===== */
+#side-panel {
+  width: 215px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Bench */
@@ -202,7 +223,7 @@ body {
 .bc-class { font-size: 0.45em; color: #666; }
 
 /* Battle log */
-#log-box { max-height: 320px; overflow-y: auto; }
+#log-box { max-height: 280px; overflow-y: auto; }
 #log-box::-webkit-scrollbar { width: 4px; }
 #log-box::-webkit-scrollbar-track { background: #111; }
 #log-box::-webkit-scrollbar-thumb { background: var(--gold-dark); }
@@ -212,6 +233,7 @@ body {
 .log-e.heal   { color: #55aa66; }
 .log-e.death  { color: #bb4444; }
 .log-e.sys    { color: var(--gold); font-style: italic; }
+.log-e.gold   { color: #ffd700; }
 
 /* ===== CONTROLS ===== */
 #controls {
@@ -248,6 +270,7 @@ body {
 .btn.primary { border-color: var(--gold); font-size: 0.95em; padding: 10px 30px; }
 .btn:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
 .hint { font-size: 0.65em; color: #555; }
+#battle-timer { font-size: 0.78em; color: #cc9944; font-family: monospace; letter-spacing: 1px; }
 #fps-counter { font-size: 0.65em; color: #555; font-family: monospace; }
 
 /* ===== RESULT OVERLAY ===== */
@@ -260,209 +283,87 @@ body {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 #result-overlay.show { display: flex; animation: fadein 0.5s ease; }
 @keyframes fadein { from{opacity:0} to{opacity:1} }
 #result-txt {
-  font-size: 3em;
+  font-size: 2.5em;
   letter-spacing: 6px;
   text-shadow: 0 0 40px currentColor;
 }
-#result-sub { font-size: 1em; color: #888; letter-spacing: 2px; }
-
-/* ===== PORTRAIT LOCK OVERLAY ===== */
-#rotate-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(10,6,2,0.97);
-  z-index: 9999;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 20px;
-  color: var(--gold);
+#result-sub { font-size: 0.95em; color: #888; letter-spacing: 2px; text-align: center; line-height: 1.8; }
+#result-details {
+  font-size: 0.85em;
+  color: var(--gold-light);
   text-align: center;
-  padding: 30px;
+  line-height: 2;
+  padding: 12px 24px;
+  border: 1px solid var(--gold-dark);
+  border-radius: 5px;
+  background: rgba(20,14,6,0.8);
 }
-#rotate-overlay .rotate-icon {
-  font-size: 4em;
-  animation: rotate-hint 2s ease-in-out infinite;
-}
-@keyframes rotate-hint {
-  0%,100% { transform: rotate(0deg); }
-  50% { transform: rotate(90deg); }
-}
-#rotate-overlay .rotate-text {
-  font-size: 1.2em;
-  letter-spacing: 2px;
-}
-#rotate-overlay .rotate-sub {
-  font-size: 0.8em;
-  color: #886633;
-}
+#result-details .gold-line { color: #ffd700; font-size: 1.1em; }
+#result-buttons { display: flex; gap: 12px; }
 
-/* ===== MOBILE LANDSCAPE ===== */
+/* ===== PORTRAIT LOCK ===== */
+#rotate-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(10,6,2,0.97); z-index: 9999;
+  align-items: center; justify-content: center; flex-direction: column; gap: 20px;
+  color: var(--gold); text-align: center; padding: 30px;
+}
+#rotate-overlay .rotate-icon { font-size: 4em; animation: rotate-hint 2s ease-in-out infinite; }
+@keyframes rotate-hint { 0%,100%{transform:rotate(0)} 50%{transform:rotate(90deg)} }
+#rotate-overlay .rotate-text { font-size: 1.2em; letter-spacing: 2px; }
+#rotate-overlay .rotate-sub { font-size: 0.8em; color: #886633; }
+
+/* ===== MOBILE ===== */
 @media (max-width: 932px) and (orientation: portrait) {
   #rotate-overlay { display: flex !important; }
-  #game { display: none !important; }
-  #header { display: none !important; }
+  #game, #header, #status-bar { display: none !important; }
 }
-
 @media (max-width: 932px) and (orientation: landscape) {
   #rotate-overlay { display: none !important; }
   #game { display: flex !important; }
-
-  /* Force everything into viewport height */
-  html, body {
-    height: 100%;
-    overflow: hidden;
-  }
-
-  #header {
-    padding: 2px 0 1px;
-    flex-shrink: 0;
-  }
-  #header h1 {
-    font-size: 0.85em;
-    letter-spacing: 2px;
-  }
-  #header .sub {
-    font-size: 0.5em;
-    margin-top: 0;
-  }
-
-  #game {
-    padding: 2px 4px;
-    gap: 2px;
-    max-width: 100%;
-    height: calc(100vh - 28px);
-    overflow: hidden;
-  }
-
-  #main-area {
-    flex-direction: row;
-    align-items: stretch;
-    gap: 4px;
-    width: 100%;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* Synergy: narrow column on left */
-  #synergy-panel {
-    width: 90px;
-    min-width: 90px;
-    padding: 3px;
-    overflow-y: auto;
-  }
-  #synergy-panel h3 {
-    font-size: 0.6em;
-    margin-bottom: 3px;
-    padding-bottom: 2px;
-  }
-  .syn-row {
-    padding: 2px;
-    margin-bottom: 2px;
-    gap: 3px;
-  }
+  html, body { height: 100%; overflow: hidden; }
+  #header { padding: 2px 0 1px; flex-shrink: 0; }
+  #header h1 { font-size: 0.85em; letter-spacing: 2px; }
+  #status-bar { padding: 2px 6px; font-size: 0.6em; gap: 8px; }
+  #game { padding: 2px 4px; gap: 2px; max-width: 100%; height: calc(100vh - 50px); overflow: hidden; }
+  #main-area { gap: 4px; flex: 1; min-height: 0; overflow: hidden; }
+  #left-panel { width: 90px; min-width: 90px; padding: 3px; overflow-y: auto; }
+  #left-panel .panel-box { padding: 3px; }
+  #left-panel h3 { font-size: 0.6em; margin-bottom: 3px; padding-bottom: 2px; }
+  .syn-row { padding: 2px; margin-bottom: 2px; gap: 3px; }
   .syn-icon { font-size: 0.85em; }
   .syn-name { font-size: 0.55em; }
   .syn-count { font-size: 0.5em; }
-  .syn-desc { font-size: 0.45em; }
-  .syn-details { display: none; }
-
-  /* Battlefield: center, scaled to fit */
-  #battlefield-wrap {
-    flex: 1;
-    min-width: 0;
-    gap: 1px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
+  .upgrade-row { padding: 3px; margin-bottom: 3px; gap: 3px; }
+  .upgrade-cls { font-size: 0.55em; }
+  .upgrade-lv { font-size: 0.45em; }
+  .upgrade-btn { font-size: 0.5em; padding: 2px 4px; }
+  #battlefield-wrap { flex: 1; min-width: 0; gap: 1px; justify-content: center; overflow: hidden; }
   .zone-label { font-size: 0.5em; line-height: 1.2; }
-
-  #pixi-container {
-    border-width: 1px;
-    flex-shrink: 1;
-  }
-
-  /* Side panel: compact column on right */
-  #side-panel {
-    width: 110px;
-    min-width: 110px;
-    gap: 3px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  .panel-box {
-    padding: 3px;
-    min-height: 0;
-  }
-  .panel-box h3 {
-    font-size: 0.58em;
-    margin-bottom: 3px;
-    padding-bottom: 2px;
-    letter-spacing: 1px;
-  }
-
-  /* Bench: tighter */
-  #bench-panel {
-    flex-shrink: 0;
-  }
-  #bench-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
-  }
-  .bench-card {
-    border-radius: 3px;
-  }
+  #pixi-container { border-width: 1px; flex-shrink: 1; }
+  #side-panel { width: 110px; min-width: 110px; gap: 3px; overflow: hidden; }
+  .panel-box { padding: 3px; min-height: 0; }
+  .panel-box h3 { font-size: 0.58em; margin-bottom: 3px; padding-bottom: 2px; }
+  #bench-grid { gap: 2px; }
   .bc-emoji { font-size: 1em; }
   .bc-name { font-size: 0.4em; }
   .bc-class { display: none; }
-  .bench-card + div[style] { display: none; }
-
-  /* Log: fill remaining space */
-  #log-box {
-    flex: 1;
-    max-height: none;
-    overflow-y: auto;
-    min-height: 0;
-  }
+  #log-box { flex: 1; max-height: none; min-height: 0; }
   .log-e { font-size: 0.48em; padding: 1px 0; }
-
-  /* Controls: fixed bottom bar */
-  #controls {
-    padding: 2px 0;
-    gap: 5px;
-    flex-shrink: 0;
-  }
-  .phase-badge {
-    padding: 2px 6px;
-    font-size: 0.55em;
-  }
-  .btn {
-    padding: 3px 8px;
-    font-size: 0.6em;
-  }
-  .btn.primary {
-    padding: 4px 12px;
-    font-size: 0.65em;
-  }
+  #controls { padding: 2px 0; gap: 5px; flex-shrink: 0; }
+  .phase-badge { padding: 2px 6px; font-size: 0.55em; }
+  .btn { padding: 3px 8px; font-size: 0.6em; }
+  .btn.primary { padding: 4px 12px; font-size: 0.65em; }
   .hint { font-size: 0.45em; }
+  #battle-timer { font-size: 0.55em; }
   #fps-counter { font-size: 0.45em; }
 }
-
-/* Desktop responsive */
-@media (min-width: 933px) {
-  #rotate-overlay { display: none !important; }
-}
+@media (min-width: 933px) { #rotate-overlay { display: none !important; } }
 </style>
 </head>
 <body>
@@ -475,51 +376,42 @@ body {
 </div>
 
 <div id="header">
-  <h1>⚔️ 魔兽自走棋 ⚔️</h1>
-  <div class="sub">Warcraft Auto Chess — Battle Demo &nbsp;·&nbsp; <span id="version-badge">v0.326.9</span></div>
+  <h1>⚔️ 魔兽自走棋PK ⚔️</h1>
+</div>
+
+<!-- 状态栏 -->
+<div id="status-bar">
+  <div class="status-item"><span class="status-label">关卡</span><span class="status-val" id="st-stage">第1关 / 5</span></div>
+  <div class="status-item"><span class="status-label">💰</span><span class="status-val gold-val" id="st-gold">0</span></div>
+  <div class="status-item"><span class="status-label">⚔️</span><span class="status-val lv-warrior" id="st-lv-warrior">Lv1</span></div>
+  <div class="status-item"><span class="status-label">🔮</span><span class="status-val lv-mage" id="st-lv-mage">Lv1</span></div>
+  <div class="status-item"><span class="status-label">✨</span><span class="status-val lv-priest" id="st-lv-priest">Lv1</span></div>
 </div>
 
 <div id="game">
   <div id="main-area">
 
-    <!-- 羁绊面板 -->
-    <div id="synergy-panel">
-      <h3>🔗 羁绊</h3>
-      <div class="syn-row" id="syn-warrior">
-        <div class="syn-icon">⚔️</div>
-        <div class="syn-info">
-          <div class="syn-name">战士</div>
-          <div class="syn-count" id="sc-warrior">0/2</div>
-          <div class="syn-desc" id="sd-warrior">2件: 生命+200, 护甲+20</div>
+    <!-- 左侧面板 -->
+    <div id="left-panel">
+      <div class="panel-box" id="synergy-panel">
+        <h3>🔗 羁绊</h3>
+        <div class="syn-row" id="syn-warrior">
+          <div class="syn-icon">⚔️</div>
+          <div class="syn-info"><div class="syn-name">战士</div><div class="syn-count" id="sc-warrior">0/2</div></div>
         </div>
-      </div>
-      <div class="syn-row" id="syn-mage">
-        <div class="syn-icon">🔮</div>
-        <div class="syn-info">
-          <div class="syn-name">法师</div>
-          <div class="syn-count" id="sc-mage">0/2</div>
-          <div class="syn-desc" id="sd-mage">2件: 法术伤害+30%</div>
+        <div class="syn-row" id="syn-mage">
+          <div class="syn-icon">🔮</div>
+          <div class="syn-info"><div class="syn-name">法师</div><div class="syn-count" id="sc-mage">0/2</div></div>
         </div>
-      </div>
-      <div class="syn-row" id="syn-priest">
-        <div class="syn-icon">✨</div>
-        <div class="syn-info">
-          <div class="syn-name">牧师</div>
-          <div class="syn-count" id="sc-priest">0/2</div>
-          <div class="syn-desc" id="sd-priest">2件: 每3秒治疗50</div>
+        <div class="syn-row" id="syn-priest">
+          <div class="syn-icon">✨</div>
+          <div class="syn-info"><div class="syn-name">牧师</div><div class="syn-count" id="sc-priest">0/2</div></div>
         </div>
       </div>
 
-      <div class="syn-details">
-        <span class="cls">⚔️ 战士</span>
-        2件: 生命+200, 护甲+20<br>
-        4件: 生命+500, 护甲+40
-        <span class="cls">🔮 法师</span>
-        2件: 法术伤害+30%<br>
-        4件: 法术伤害+70%
-        <span class="cls">✨ 牧师</span>
-        2件: 每3秒恢复50血<br>
-        4件: 每3秒恢复150血
+      <div class="panel-box" id="upgrade-panel">
+        <h3>⬆ 升级</h3>
+        <div id="upgrade-list"></div>
       </div>
     </div>
 
@@ -535,7 +427,7 @@ body {
       <div class="panel-box" id="bench-panel">
         <h3>🎯 英雄选择</h3>
         <div id="bench-grid"></div>
-        <div style="font-size:0.6em;color:#555;margin-top:8px;text-align:center">点击英雄选中 → 点击下方格子放置<br>再次点击格子取消</div>
+        <div style="font-size:0.58em;color:#555;margin-top:6px;text-align:center">点击英雄 → 点击格子放置<br>最多上场5个英雄</div>
       </div>
       <div class="panel-box" id="log-box">
         <h3>📜 战斗日志</h3>
@@ -547,20 +439,22 @@ body {
 
   <!-- 控制栏 -->
   <div id="controls">
-    <div class="phase-badge" id="phase-badge">准备阶段</div>
+    <div class="phase-badge" id="phase-badge">准备阶段 · 第1关</div>
     <button class="btn primary" id="btn-start">⚔ 开始战斗</button>
-    <button class="btn" id="btn-auto">⚡ 随机配置</button>
-    <button class="btn" id="btn-reset">↺ 重置</button>
+    <button class="btn" id="btn-auto">⚡ 随机布阵</button>
+    <button class="btn" id="btn-reset">↺ 重置布阵</button>
+    <span id="battle-timer"></span>
     <span class="hint" id="hint-txt">选择英雄放置到绿色区域</span>
     <span id="fps-counter"></span>
   </div>
 </div>
 
-<!-- 结果遮罩 -->
+<!-- 结果弹窗 -->
 <div id="result-overlay">
   <div id="result-txt"></div>
   <div id="result-sub"></div>
-  <button class="btn primary" onclick="resetGame()">↺ 再来一局</button>
+  <div id="result-details"></div>
+  <div id="result-buttons"></div>
 </div>
 
 <script>
@@ -569,28 +463,17 @@ body {
 // ============================================================
 //  常量
 // ============================================================
-const COLS = 7, ROWS = 4, CS = 92;
+const COLS = 7, ROWS = 8, CS = 92;
 const BF_W = COLS * CS, BF_H = ROWS * CS;
-const PLAYER_ROWS = [2, 3];
-const ENEMY_ROWS  = [0, 1];
+const PLAYER_ROWS = [4, 5, 6, 7];
+const ENEMY_ROWS  = [0, 1, 2, 3];
+const MAX_PLAYER_UNITS = 5;
 
-// 颜色
 const CLR = {
-  warrior:  0xe05050,
-  mage:     0x5599ee,
-  priest:   0xddcc55,
-  bg:       0x1a1008,
-  gridLine: 0x4a3520,
-  ezone:    0x331111,
-  pzone:    0x112211,
-  gold:     0xc8a84b,
-  hpGreen:  0x33cc44,
-  hpOrange: 0xee8800,
-  hpRed:    0xcc2222,
-  manaBlue: 0x3388ff,
-  barBg:    0x222222,
-  white:    0xffffff,
-  black:    0x000000,
+  warrior: 0xe05050, mage: 0x5599ee, priest: 0xddcc55,
+  bg: 0x1a1008, gridLine: 0x4a3520, ezone: 0x331111, pzone: 0x112211,
+  gold: 0xc8a84b, hpGreen: 0x33cc44, hpOrange: 0xee8800, hpRed: 0xcc2222,
+  manaBlue: 0x3388ff, barBg: 0x222222, white: 0xffffff, black: 0x000000,
 };
 
 // ============================================================
@@ -662,469 +545,411 @@ const CHARS = {
   },
 };
 
+// ============================================================
+//  羁绊
+// ============================================================
 const SYNERGIES = {
   warrior:{ thresholds:[2,4], bonuses:{ 2:{hp:200,armor:20}, 4:{hp:500,armor:40} } },
   mage:   { thresholds:[2,4], bonuses:{ 2:{sp:0.30},         4:{sp:0.70}         } },
   priest: { thresholds:[2,4], bonuses:{ 2:{hpt:50},          4:{hpt:150}         } },
 };
 
-const ENEMY_PRESET = [
-  {id:'varian',   col:1, row:0},
-  {id:'antonidas',col:3, row:0},
-  {id:'tyrande',  col:5, row:0},
-  {id:'bolvar',   col:2, row:1},
-  {id:'khadgar',  col:4, row:1},
+// ============================================================
+//  关卡配置
+// ============================================================
+const STAGES = [
+  { name:'先锋小队', units:['garrosh','varian','bolvar','anduin','velen'], enemyLv:1,
+    positions:[{col:1,row:2},{col:3,row:2},{col:5,row:2},{col:2,row:0},{col:4,row:0}],
+    dropBase:2, clearBonus:3 },
+  { name:'法师军团', units:['garrosh','bolvar','jaina','khadgar','antonidas'], enemyLv:2,
+    positions:[{col:2,row:2},{col:4,row:2},{col:1,row:0},{col:3,row:0},{col:5,row:0}],
+    dropBase:3, clearBonus:5 },
+  { name:'平衡之力', units:['varian','bolvar','jaina','antonidas','anduin'], enemyLv:3,
+    positions:[{col:2,row:3},{col:4,row:3},{col:1,row:1},{col:5,row:1},{col:3,row:0}],
+    dropBase:4, clearBonus:8 },
+  { name:'精英卫队', units:['bolvar','jaina','khadgar','antonidas','velen'], enemyLv:4,
+    positions:[{col:3,row:3},{col:1,row:1},{col:3,row:1},{col:5,row:1},{col:3,row:0}],
+    dropBase:5, clearBonus:12 },
+  { name:'最终之战', units:['garrosh','bolvar','jaina','antonidas','velen'], enemyLv:5,
+    positions:[{col:2,row:3},{col:4,row:3},{col:1,row:1},{col:5,row:1},{col:3,row:0}],
+    dropBase:6, clearBonus:0 },
 ];
+
+// ============================================================
+//  职业等级系统
+// ============================================================
+const LEVEL_COSTS = [0, 5, 10, 18, 30]; // cost to reach Lv2,3,4,5
+
+const CLASS_SCALING = {
+  warrior: [
+    { hp:1.00, atk:1.00, armor:1.00, skill:1.0 },
+    { hp:1.15, atk:1.15, armor:1.15, skill:1.2 },
+    { hp:1.30, atk:1.30, armor:1.30, skill:1.4 },
+    { hp:1.50, atk:1.50, armor:1.50, skill:1.7 },
+    { hp:1.80, atk:1.80, armor:1.80, skill:2.0 },
+  ],
+  mage: [
+    { hp:1.00, atk:1.00, armor:1.00, skill:1.0 },
+    { hp:1.10, atk:1.20, armor:1.00, skill:1.25 },
+    { hp:1.20, atk:1.40, armor:1.00, skill:1.55 },
+    { hp:1.30, atk:1.65, armor:1.00, skill:1.9 },
+    { hp:1.50, atk:2.00, armor:1.00, skill:2.3 },
+  ],
+  priest: [
+    { hp:1.00, atk:1.00, armor:1.00, skill:1.0 },
+    { hp:1.12, atk:1.10, armor:1.10, skill:1.3 },
+    { hp:1.25, atk:1.20, armor:1.20, skill:1.6 },
+    { hp:1.40, atk:1.35, armor:1.35, skill:2.0 },
+    { hp:1.60, atk:1.55, armor:1.55, skill:2.5 },
+  ],
+};
+
+// Speed bonus multiplier
+function speedMult(seconds) {
+  if (seconds <= 15) return 2.0;
+  if (seconds <= 30) return 1.5;
+  if (seconds <= 60) return 1.0;
+  return 0.8;
+}
+function speedLabel(seconds) {
+  if (seconds <= 15) return '⚡ 闪电战';
+  if (seconds <= 30) return '🔥 速战速决';
+  if (seconds <= 60) return '⚔ 正常';
+  return '🐢 持久战';
+}
+
+// ============================================================
+//  持久状态
+// ============================================================
+let GAME = {
+  stage: 0,         // 0-indexed
+  gold: 0,
+  classLevels: { warrior: 1, mage: 1, priest: 1 },
+  playerLayout: [],  // [{charId, col, row}] saved between rounds
+};
+
+function getScaling(cls, lv) {
+  return CLASS_SCALING[cls][lv - 1];
+}
+
+function getUpgradeCost(cls) {
+  const lv = GAME.classLevels[cls];
+  if (lv >= 5) return null;
+  return LEVEL_COSTS[lv]; // cost to go from lv → lv+1
+}
 
 // ============================================================
 //  PixiJS 初始化
 // ============================================================
 const app = new PIXI.Application({
-  width: BF_W,
-  height: BF_H,
-  backgroundColor: CLR.bg,
-  antialias: true,
-  resolution: window.devicePixelRatio || 1,
-  autoDensity: true,
+  width: BF_W, height: BF_H,
+  backgroundColor: CLR.bg, antialias: true,
+  resolution: window.devicePixelRatio || 1, autoDensity: true,
 });
 document.getElementById('pixi-container').appendChild(app.view);
 
-// Layers
-const gridLayer    = new PIXI.Container();
-const unitLayer    = new PIXI.Container();
-const effectLayer  = new PIXI.Container();
-const textLayer    = new PIXI.Container();
+const gridLayer   = new PIXI.Container();
+const unitLayer   = new PIXI.Container();
+const effectLayer = new PIXI.Container();
+const textLayer   = new PIXI.Container();
 app.stage.addChild(gridLayer, unitLayer, effectLayer, textLayer);
 
 // ============================================================
-//  Tween 引擎 (轻量级)
+//  Tween
 // ============================================================
 const tweens = [];
 function tween(obj, props, duration, easing = 'easeOut', onDone = null) {
   const start = {};
   for (const k in props) start[k] = obj[k];
-  const tw = { obj, start, end: props, dur: duration, elapsed: 0, easing, onDone };
-  tweens.push(tw);
-  return tw;
+  tweens.push({ obj, start, end: props, dur: duration, elapsed: 0, easing, onDone });
 }
 function easeFn(name, t) {
   switch(name) {
-    case 'easeOut':    return 1 - (1 - t) * (1 - t);
-    case 'easeIn':     return t * t;
-    case 'easeInOut':  return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
-    case 'elastic':    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2,-10*t) * Math.sin((t*10-0.75)*(2*Math.PI)/3)+1;
-    case 'bounce':     return 1 - Math.abs(Math.cos(t * Math.PI * 2) * (1-t));
-    default:           return t;
+    case 'easeOut':   return 1 - (1-t)*(1-t);
+    case 'easeIn':    return t*t;
+    case 'easeInOut': return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+    case 'elastic':   return t===0?0:t===1?1:Math.pow(2,-10*t)*Math.sin((t*10-0.75)*(2*Math.PI)/3)+1;
+    default:          return t;
   }
 }
 function updateTweens(dt) {
-  for (let i = tweens.length - 1; i >= 0; i--) {
+  for (let i = tweens.length-1; i >= 0; i--) {
     const tw = tweens[i];
     tw.elapsed += dt;
-    let t = Math.min(1, tw.elapsed / tw.dur);
+    const t = Math.min(1, tw.elapsed / tw.dur);
     const e = easeFn(tw.easing, t);
-    for (const k in tw.end) {
-      tw.obj[k] = tw.start[k] + (tw.end[k] - tw.start[k]) * e;
-    }
-    if (t >= 1) {
-      tweens.splice(i, 1);
-      if (tw.onDone) tw.onDone();
-    }
+    for (const k in tw.end) tw.obj[k] = tw.start[k] + (tw.end[k] - tw.start[k]) * e;
+    if (t >= 1) { tweens.splice(i, 1); if (tw.onDone) tw.onDone(); }
   }
 }
 
 // ============================================================
-//  粒子系统 (轻量级)
+//  Particles
 // ============================================================
 const particles = [];
 function spawnParticles(x, y, color, count, opts = {}) {
   for (let i = 0; i < count; i++) {
     const g = new PIXI.Graphics();
-    const size = opts.size || (2 + Math.random() * 3);
-    g.beginFill(color, 0.9);
-    g.drawCircle(0, 0, size);
-    g.endFill();
+    const size = opts.size || (2 + Math.random()*3);
+    g.beginFill(color, 0.9); g.drawCircle(0,0,size); g.endFill();
     g.x = x; g.y = y;
     effectLayer.addChild(g);
     particles.push({
-      gfx: g,
-      vx: (Math.random() - 0.5) * (opts.spread || 120),
-      vy: (Math.random() - 0.5) * (opts.spread || 120) - (opts.upward || 0),
-      life: 0,
-      maxLife: (opts.life || 0.6) + Math.random() * 0.3,
-      gravity: opts.gravity || 80,
-      shrink: opts.shrink !== false,
-      startSize: size,
+      gfx:g, vx:(Math.random()-0.5)*(opts.spread||120), vy:(Math.random()-0.5)*(opts.spread||120)-(opts.upward||0),
+      life:0, maxLife:(opts.life||0.6)+Math.random()*0.3, gravity:opts.gravity||80, shrink:opts.shrink!==false, startSize:size,
     });
   }
 }
 function updateParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
+  for (let i = particles.length-1; i >= 0; i--) {
     const p = particles[i];
-    p.life += dt;
-    p.gfx.x += p.vx * dt;
-    p.gfx.y += p.vy * dt;
-    p.vy += p.gravity * dt;
-    const t = p.life / p.maxLife;
-    p.gfx.alpha = Math.max(0, 1 - t);
-    if (p.shrink) p.gfx.scale.set(1 - t * 0.8);
-    if (p.life >= p.maxLife) {
-      p.gfx.destroy();
-      particles.splice(i, 1);
-    }
+    p.life += dt; p.gfx.x += p.vx*dt; p.gfx.y += p.vy*dt; p.vy += p.gravity*dt;
+    const t = p.life/p.maxLife;
+    p.gfx.alpha = Math.max(0,1-t);
+    if (p.shrink) p.gfx.scale.set(1-t*0.8);
+    if (p.life >= p.maxLife) { p.gfx.destroy(); particles.splice(i,1); }
   }
 }
 
 // ============================================================
-//  状态
+//  Battle State
 // ============================================================
 let G = newState();
 function newState() {
   return {
-    phase: 'setup',
-    units: [],
-    uid: 1,
-    healTimer: 0,
-    selChar: null,
-    tick: 0,
-    synCounts: {warrior:0, mage:0, priest:0},
-    hoverCell: null,
+    phase: 'setup', units: [], uid: 1, healTimer: 0,
+    selChar: null, tick: 0, synCounts: {warrior:0,mage:0,priest:0},
+    battleStartTime: 0, battleElapsed: 0, killCount: 0, goldEarned: 0,
   };
 }
 
 // ============================================================
-//  网格绘制
+//  Grid
 // ============================================================
 function drawGrid() {
   gridLayer.removeChildren();
-
-  // 背景区域
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const isEnemy = ENEMY_ROWS.includes(r);
       const g = new PIXI.Graphics();
       g.beginFill(isEnemy ? CLR.ezone : CLR.pzone, 0.3);
-      g.drawRect(c * CS, r * CS, CS, CS);
-      g.endFill();
-
-      // Grid border
+      g.drawRect(c*CS, r*CS, CS, CS); g.endFill();
       g.lineStyle(1, CLR.gridLine, 0.4);
-      g.drawRect(c * CS, r * CS, CS, CS);
+      g.drawRect(c*CS, r*CS, CS, CS);
       gridLayer.addChild(g);
     }
   }
-
-  // 中间分割线
   const divider = new PIXI.Graphics();
   divider.lineStyle(2, CLR.gold, 0.5);
-  divider.moveTo(0, ROWS / 2 * CS);
-  divider.lineTo(BF_W, ROWS / 2 * CS);
+  divider.moveTo(0, ROWS/2*CS); divider.lineTo(BF_W, ROWS/2*CS);
   gridLayer.addChild(divider);
 }
 
-// Hover highlight
 let hoverGfx = null;
 function showHoverCell(col, row) {
   if (hoverGfx) { hoverGfx.destroy(); hoverGfx = null; }
   if (col === null || !PLAYER_ROWS.includes(row) || G.phase !== 'setup') return;
   hoverGfx = new PIXI.Graphics();
   hoverGfx.beginFill(CLR.gold, 0.15);
-  hoverGfx.drawRect(col * CS, row * CS, CS, CS);
-  hoverGfx.endFill();
+  hoverGfx.drawRect(col*CS, row*CS, CS, CS); hoverGfx.endFill();
   gridLayer.addChild(hoverGfx);
 }
 
 // ============================================================
-//  PixiJS单位渲染
+//  Unit GFX
 // ============================================================
-function cellCenter(col, row) {
-  return { x: col * CS + CS / 2, y: row * CS + CS / 2 };
-}
+function cellCenter(col, row) { return { x: col*CS+CS/2, y: row*CS+CS/2 }; }
 
 function createUnitGfx(u) {
   const container = new PIXI.Container();
   const {x, y} = cellCenter(u.col, u.row);
-  container.x = x;
-  container.y = y;
+  container.x = x; container.y = y;
 
   const clrMap = { warrior: CLR.warrior, mage: CLR.mage, priest: CLR.priest };
   const unitColor = clrMap[u.cls] || CLR.gold;
-  const halfW = (CS - 14) / 2;
-  const halfH = (CS - 14) / 2;
+  const halfW = (CS-14)/2, halfH = (CS-14)/2;
 
-  // Body background
   const body = new PIXI.Graphics();
   body.beginFill(0x111111, 0.9);
-  body.drawRoundedRect(-halfW, -halfH, halfW * 2, halfH * 2, 6);
-  body.endFill();
-  // Border
-  body.lineStyle(2.5, unitColor, u.team === 'enemy' ? 0.7 : 1);
-  body.drawRoundedRect(-halfW, -halfH, halfW * 2, halfH * 2, 6);
+  body.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6); body.endFill();
+  body.lineStyle(2.5, unitColor, u.team==='enemy' ? 0.7 : 1);
+  body.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6);
 
-  // Inner glow
   const glow = new PIXI.Graphics();
   glow.beginFill(unitColor, 0.08);
-  glow.drawRoundedRect(-halfW + 2, -halfH + 2, halfW * 2 - 4, halfH * 2 - 4, 4);
-  glow.endFill();
+  glow.drawRoundedRect(-halfW+2, -halfH+2, halfW*2-4, halfH*2-4, 4); glow.endFill();
 
-  // Portrait / Emoji (character icon)
-  // Safe area: body is ±39px, name at y=16, bars at y=25/32
-  // Portrait: 42x42 centered at y=-18 fits within body without masking
   let portrait;
   const tex = TEXTURES[u.charId];
   if (tex) {
     portrait = new PIXI.Sprite(tex);
-    portrait.width = 42;
-    portrait.height = 42;
-    portrait.anchor.set(0.5);
-    portrait.y = -18;
+    portrait.width = 42; portrait.height = 42;
+    portrait.anchor.set(0.5); portrait.y = -18;
   } else {
-    portrait = new PIXI.Text(u.emoji, { fontSize: 30, align: 'center' });
-    portrait.anchor.set(0.5);
-    portrait.y = -6;
+    portrait = new PIXI.Text(u.emoji, { fontSize: 30, align:'center' });
+    portrait.anchor.set(0.5); portrait.y = -6;
   }
 
-  // Name label - auto-scale to fit within cell width
-  const maxNameW = halfW * 2 - 6;
-  const nameText = new PIXI.Text(u.name, {
-    fontSize: 12,
-    fill: 0xf0d080,
-    fontFamily: 'Georgia, serif',
-    align: 'center',
-  });
-  nameText.anchor.set(0.5);
-  nameText.y = 16;
-  // Scale down if name is wider than cell
-  if (nameText.width > maxNameW) {
-    nameText.scale.set(maxNameW / nameText.width);
+  const maxNameW = halfW*2-6;
+  const nameText = new PIXI.Text(u.name, { fontSize:12, fill:0xf0d080, fontFamily:'Georgia, serif', align:'center' });
+  nameText.anchor.set(0.5); nameText.y = 16;
+  if (nameText.width > maxNameW) nameText.scale.set(maxNameW / nameText.width);
+
+  // Level badge for enemies
+  if (u.team === 'enemy' && u.level > 1) {
+    const lvBadge = new PIXI.Text(`Lv${u.level}`, { fontSize:10, fill:0xff8844, fontFamily:'Georgia, serif', fontWeight:'bold' });
+    lvBadge.anchor.set(1, 0); lvBadge.x = halfW - 2; lvBadge.y = -halfH + 2;
+    container.addChild(lvBadge);
   }
 
-  // HP bar background
-  const barW = halfW * 2 - 8;
+  const barW = halfW*2-8;
   const hpBg = new PIXI.Graphics();
-  hpBg.beginFill(CLR.barBg);
-  hpBg.drawRoundedRect(-barW/2, halfH - 14, barW, 6, 2);
-  hpBg.endFill();
-
-  // HP bar fill
+  hpBg.beginFill(CLR.barBg); hpBg.drawRoundedRect(-barW/2, halfH-14, barW, 6, 2); hpBg.endFill();
   const hpBar = new PIXI.Graphics();
-  drawHpBar(hpBar, barW, u.hp / u.maxHp);
-  hpBar.x = -barW/2;
-  hpBar.y = halfH - 14;
+  drawHpBar(hpBar, barW, u.hp/u.maxHp);
+  hpBar.x = -barW/2; hpBar.y = halfH-14;
 
-  // Mana bar background
   const mnBg = new PIXI.Graphics();
-  mnBg.beginFill(CLR.barBg);
-  mnBg.drawRoundedRect(-barW/2, halfH - 7, barW, 4, 1);
-  mnBg.endFill();
-
-  // Mana bar fill
+  mnBg.beginFill(CLR.barBg); mnBg.drawRoundedRect(-barW/2, halfH-7, barW, 4, 1); mnBg.endFill();
   const mnBar = new PIXI.Graphics();
-  drawMnBar(mnBar, barW, u.mana / u.maxMana);
-  mnBar.x = -barW/2;
-  mnBar.y = halfH - 7;
+  drawMnBar(mnBar, barW, u.mana/u.maxMana);
+  mnBar.x = -barW/2; mnBar.y = halfH-7;
 
   container.addChild(body, glow, portrait, nameText, hpBg, hpBar, mnBg, mnBar);
 
-  // Enemy tint overlay
   if (u.team === 'enemy') {
     const overlay = new PIXI.Graphics();
     overlay.beginFill(0x4444aa, 0.12);
-    overlay.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6);
-    overlay.endFill();
+    overlay.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6); overlay.endFill();
     container.addChild(overlay);
   }
 
   container.sortableChildren = true;
   unitLayer.addChild(container);
-
-  // Store references
   u.gfx = container;
   u.gfxParts = { body, portrait, nameText, hpBar, mnBar, barW, halfW, halfH };
 }
 
 function drawHpBar(g, barW, pct) {
-  g.clear();
-  pct = Math.max(0, Math.min(1, pct));
+  g.clear(); pct = Math.max(0, Math.min(1, pct));
   const color = pct > 0.5 ? CLR.hpGreen : pct > 0.25 ? CLR.hpOrange : CLR.hpRed;
-  if (pct > 0) {
-    g.beginFill(color);
-    g.drawRoundedRect(0, 0, barW * pct, 6, 2);
-    g.endFill();
-  }
+  if (pct > 0) { g.beginFill(color); g.drawRoundedRect(0,0,barW*pct,6,2); g.endFill(); }
 }
-
 function drawMnBar(g, barW, pct) {
-  g.clear();
-  pct = Math.max(0, Math.min(1, pct));
-  if (pct > 0) {
-    g.beginFill(CLR.manaBlue);
-    g.drawRoundedRect(0, 0, barW * pct, 4, 1);
-    g.endFill();
-  }
+  g.clear(); pct = Math.max(0, Math.min(1, pct));
+  if (pct > 0) { g.beginFill(CLR.manaBlue); g.drawRoundedRect(0,0,barW*pct,4,1); g.endFill(); }
 }
-
 function refreshUnitBars(u) {
   if (!u.gfxParts) return;
-  const { hpBar, mnBar, barW } = u.gfxParts;
-  drawHpBar(hpBar, barW, u.hp / u.maxHp);
-  drawMnBar(mnBar, barW, u.mana / u.maxMana);
+  drawHpBar(u.gfxParts.hpBar, u.gfxParts.barW, u.hp/u.maxHp);
+  drawMnBar(u.gfxParts.mnBar, u.gfxParts.barW, u.mana/u.maxMana);
 }
 
 // ============================================================
-//  浮动伤害数字 (PixiJS)
+//  Damage text / FX
 // ============================================================
 function showDmgText(u, val, type) {
   if (!u.gfx) return;
-  const colors = { phys: 0xffcc22, magic: 0x88bbff, heal: 0x44ee66, info: 0xffdd88 };
+  const colors = { phys:0xffcc22, magic:0x88bbff, heal:0x44ee66, info:0xffdd88, gold:0xffd700 };
   const color = colors[type] || 0xffffff;
-  const size = type === 'heal' ? 13 : 15;
   const txt = new PIXI.Text(typeof val === 'number' ? `-${val}` : val, {
-    fontSize: size,
-    fontFamily: 'Georgia, serif',
-    fontWeight: 'bold',
-    fill: color,
-    stroke: 0x000000,
-    strokeThickness: 3,
+    fontSize: type==='gold' ? 14 : 15, fontFamily:'Georgia, serif', fontWeight:'bold',
+    fill: color, stroke: 0x000000, strokeThickness: 3,
   });
   txt.anchor.set(0.5);
-  txt.x = u.gfx.x + (Math.random() - 0.5) * 20;
+  txt.x = u.gfx.x + (Math.random()-0.5)*20;
   txt.y = u.gfx.y - 10;
-  txt.alpha = 1;
   textLayer.addChild(txt);
-
   tween(txt, { y: txt.y - 55, alpha: 0 }, 1.0, 'easeOut', () => txt.destroy());
 }
 
-// ============================================================
-//  技能特效 (PixiJS粒子+文字)
-// ============================================================
 function showSpellFx(u, emoji, color) {
   if (!u.gfx) return;
-
-  // Emoji burst
   const fx = new PIXI.Text(emoji, { fontSize: 36 });
-  fx.anchor.set(0.5);
-  fx.x = u.gfx.x;
-  fx.y = u.gfx.y - 5;
-  fx.alpha = 1;
-  fx.scale.set(0.5);
+  fx.anchor.set(0.5); fx.x = u.gfx.x; fx.y = u.gfx.y - 5; fx.scale.set(0.5);
   effectLayer.addChild(fx);
-  tween(fx, { y: fx.y - 20 }, 0.15, 'easeOut', () => {
+  tween(fx, { y: fx.y-20 }, 0.15, 'easeOut', () => {
     tween(fx, { alpha: 0 }, 0.5, 'easeOut', () => fx.destroy());
   });
-  tween(fx.scale, { x: 1.6, y: 1.6 }, 0.6, 'elastic');
-
-  // Particles
-  spawnParticles(u.gfx.x, u.gfx.y, color || CLR.gold, 12, { spread: 80, life: 0.5 });
+  tween(fx.scale, { x:1.6, y:1.6 }, 0.6, 'elastic');
+  spawnParticles(u.gfx.x, u.gfx.y, color||CLR.gold, 12, { spread:80, life:0.5 });
 }
 
-// Shield ring effect
 function addShieldGfx(u) {
   if (u._shieldGfx) { u._shieldGfx.destroy(); u._shieldGfx = null; }
   const ring = new PIXI.Graphics();
-  const hw = u.gfxParts.halfW + 4;
-  const hh = u.gfxParts.halfH + 4;
+  const hw = u.gfxParts.halfW+4, hh = u.gfxParts.halfH+4;
   ring.lineStyle(3, 0xddddff, 0.85);
-  ring.drawRoundedRect(-hw, -hh, hw * 2, hh * 2, 8);
-  u.gfx.addChild(ring);
-  u._shieldGfx = ring;
-  u._shieldPulse = 0;
+  ring.drawRoundedRect(-hw, -hh, hw*2, hh*2, 8);
+  u.gfx.addChild(ring); u._shieldGfx = ring; u._shieldPulse = 0;
 }
-function removeShieldGfx(u) {
-  if (u._shieldGfx) { u._shieldGfx.destroy(); u._shieldGfx = null; }
-}
+function removeShieldGfx(u) { if (u._shieldGfx) { u._shieldGfx.destroy(); u._shieldGfx = null; } }
 
-// Attack lunge animation
 function animAttack(u, tgt) {
   if (!u.gfx || !tgt.gfx) return;
-  const origX = u.gfx.x, origY = u.gfx.y;
-  const dx = tgt.gfx.x - u.gfx.x;
-  const dy = tgt.gfx.y - u.gfx.y;
-  const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-  const lungeX = origX + (dx / dist) * 15;
-  const lungeY = origY + (dy / dist) * 15;
-
-  tween(u.gfx, { x: lungeX, y: lungeY }, 0.08, 'easeOut', () => {
-    tween(u.gfx, { x: origX, y: origY }, 0.12, 'easeOut');
+  const ox = u.gfx.x, oy = u.gfx.y;
+  const dx = tgt.gfx.x-u.gfx.x, dy = tgt.gfx.y-u.gfx.y;
+  const dist = Math.sqrt(dx*dx+dy*dy)||1;
+  tween(u.gfx, { x:ox+(dx/dist)*15, y:oy+(dy/dist)*15 }, 0.08, 'easeOut', () => {
+    tween(u.gfx, { x:ox, y:oy }, 0.12, 'easeOut');
   });
-  tween(u.gfx.scale, { x: 1.12, y: 1.12 }, 0.08, 'easeOut', () => {
-    tween(u.gfx.scale, { x: 1, y: 1 }, 0.12, 'easeOut');
+  tween(u.gfx.scale, {x:1.12,y:1.12}, 0.08, 'easeOut', () => {
+    tween(u.gfx.scale, {x:1,y:1}, 0.12, 'easeOut');
   });
 }
-
-// Hit flash
 function animHit(u) {
   if (!u.gfxParts) return;
-  const body = u.gfxParts.body;
-  body.tint = 0xff4444;
-  setTimeout(() => { if (body && !body.destroyed) body.tint = 0xffffff; }, 120);
+  u.gfxParts.body.tint = 0xff4444;
+  setTimeout(() => { if (u.gfxParts?.body && !u.gfxParts.body.destroyed) u.gfxParts.body.tint = 0xffffff; }, 120);
 }
-
-// Cast glow
 function animCast(u) {
   if (!u.gfx) return;
-  const glow = new PIXI.Graphics();
-  const hw = u.gfxParts.halfW + 6;
-  const hh = u.gfxParts.halfH + 6;
-  glow.beginFill(0xffee55, 0.3);
-  glow.drawRoundedRect(-hw, -hh, hw * 2, hh * 2, 10);
-  glow.endFill();
-  u.gfx.addChild(glow);
-  tween(glow, { alpha: 0 }, 0.6, 'easeOut', () => glow.destroy());
-
-  // Spark particles
-  const clrMap = { warrior: 0xff6644, mage: 0x66aaff, priest: 0xffee44 };
-  spawnParticles(u.gfx.x, u.gfx.y, clrMap[u.cls] || CLR.gold, 8, { spread: 60, upward: 40, life: 0.4 });
+  const g = new PIXI.Graphics();
+  const hw = u.gfxParts.halfW+6, hh = u.gfxParts.halfH+6;
+  g.beginFill(0xffee55, 0.3); g.drawRoundedRect(-hw,-hh,hw*2,hh*2,10); g.endFill();
+  u.gfx.addChild(g);
+  tween(g, {alpha:0}, 0.6, 'easeOut', () => g.destroy());
+  const clrMap = {warrior:0xff6644, mage:0x66aaff, priest:0xffee44};
+  spawnParticles(u.gfx.x, u.gfx.y, clrMap[u.cls]||CLR.gold, 8, {spread:60, upward:40, life:0.4});
 }
-
-// Death animation
 function animDeath(u) {
   if (!u.gfx) return;
-  const cx = u.gfx.x, cy = u.gfx.y;
-  spawnParticles(cx, cy, CLR.warrior, 20, { spread: 100, life: 0.8, gravity: 120 });
-  tween(u.gfx, { alpha: 0 }, 0.4, 'easeIn');
-  tween(u.gfx.scale, { x: 0.3, y: 0.3 }, 0.4, 'easeIn', () => {
-    u.gfx.destroy();
-    u.gfx = null;
-    u.gfxParts = null;
-  });
+  spawnParticles(u.gfx.x, u.gfx.y, CLR.warrior, 20, {spread:100, life:0.8, gravity:120});
+  tween(u.gfx, {alpha:0}, 0.4, 'easeIn');
+  tween(u.gfx.scale, {x:0.3,y:0.3}, 0.4, 'easeIn', () => { u.gfx.destroy(); u.gfx=null; u.gfxParts=null; });
 }
 
 // ============================================================
-//  单位逻辑
+//  Unit creation with level scaling
 // ============================================================
-function makeUnit(ch, col, row, team) {
+function makeUnit(ch, col, row, team, level) {
+  level = level || 1;
+  const sc = getScaling(ch.cls, level);
   const synBonus = team === 'player' ? calcSynBonus(ch.cls) : {};
-  const extraHp  = synBonus.hp || 0;
+  const extraHp = synBonus.hp || 0;
+
+  const scaledHp    = Math.round(ch.baseHp * sc.hp) + extraHp;
+  const scaledAtk   = Math.round(ch.atk * sc.atk);
+  const scaledArmor = Math.round(ch.armor * sc.armor) + (synBonus.armor || 0);
+
+  // Deep copy ability with skill scaling
+  const ab = { ...ch.ab };
+  if (ab.dmg)     ab.dmg     = Math.round(ab.dmg * sc.skill);
+  if (ab.amt)     ab.amt     = Math.round(ab.amt * sc.skill);
+  if (ab.mult)    ab.mult    = +(ab.mult * sc.skill).toFixed(2);
+  if (ab.buffAmt) ab.buffAmt = +(ab.buffAmt * sc.skill).toFixed(2);
+  if (ab.count)   ab.count   = Math.round(ab.count * sc.skill);
+  if (ab.dur)     ab.dur     = Math.round(ab.dur * Math.min(sc.skill, 1.5)); // cap duration scaling
+
   return {
-    uid: G.uid++,
-    charId: ch.id,
-    name: ch.name,
-    cls:  ch.cls,
-    emoji: ch.emoji,
-    team, col, row,
-    maxHp: ch.baseHp + extraHp,
-    hp:    ch.baseHp + extraHp,
-    atk:   ch.atk,
-    atkMs: ch.atkMs,
-    range: ch.range,
-    armor: ch.armor + (synBonus.armor || 0),
-    mana:  0,
-    maxMana: ch.ab.cost,
-    ab:    ch.ab,
-    lastAtk:  0,
-    lastAb:   0,
-    stunUntil: 0,
-    shielded:  false,
-    shieldEnd: 0,
-    atkMult:   1.0,
-    buffEnd:   0,
-    gfx: null,
-    gfxParts: null,
-    // Smooth position for rendering
-    renderX: col * CS + CS/2,
-    renderY: row * CS + CS/2,
+    uid: G.uid++, charId: ch.id, name: ch.name, cls: ch.cls, emoji: ch.emoji,
+    team, col, row, level,
+    maxHp: scaledHp, hp: scaledHp,
+    atk: scaledAtk, atkMs: ch.atkMs, range: ch.range, armor: scaledArmor,
+    mana: 0, maxMana: ab.cost, ab,
+    lastAtk: 0, lastAb: 0, stunUntil: 0,
+    shielded: false, shieldEnd: 0, atkMult: 1.0, buffEnd: 0,
+    gfx: null, gfxParts: null,
   };
 }
 
@@ -1132,22 +957,18 @@ function calcSynBonus(cls) {
   const cnt = G.synCounts[cls] || 0;
   const syn = SYNERGIES[cls];
   let bonus = {};
-  syn.thresholds.forEach(t => { if (cnt >= t) bonus = { ...bonus, ...syn.bonuses[t] }; });
+  syn.thresholds.forEach(t => { if (cnt >= t) bonus = {...bonus, ...syn.bonuses[t]}; });
   return bonus;
 }
 
-function spawnUnit(u) {
-  G.units.push(u);
-  createUnitGfx(u);
-}
-
+function spawnUnit(u) { G.units.push(u); createUnitGfx(u); }
 function removeUnit(u) {
   G.units = G.units.filter(x => x.uid !== u.uid);
-  if (u.gfx) { u.gfx.destroy(); u.gfx = null; u.gfxParts = null; }
+  if (u.gfx) { u.gfx.destroy(); u.gfx=null; u.gfxParts=null; }
 }
 
 // ============================================================
-//  DOM辅助面板
+//  DOM panels
 // ============================================================
 function buildBench() {
   const grid = document.getElementById('bench-grid');
@@ -1156,8 +977,10 @@ function buildBench() {
     const card = document.createElement('div');
     card.className = `bench-card ${ch.cls}`;
     card.id = `bc-${ch.id}`;
-    card.innerHTML = `<div class="bc-emoji">${ch.emoji}</div><div class="bc-name">${ch.name}</div><div class="bc-class">${clsLabel(ch.cls)}</div>`;
-    card.title = `${ch.name}·${ch.title}\n职业:${clsLabel(ch.cls)}\nHP:${ch.baseHp} 攻击:${ch.atk} 射程:${ch.range}\n技能:${ch.ab.name}\n${ch.ab.desc}`;
+    const lv = GAME.classLevels[ch.cls];
+    card.innerHTML = `<div class="bc-emoji">${ch.emoji}</div><div class="bc-name">${ch.name}</div><div class="bc-class">${clsLabel(ch.cls)} Lv${lv}</div>`;
+    const sc = getScaling(ch.cls, lv);
+    card.title = `${ch.name}·${ch.title}\n职业:${clsLabel(ch.cls)} Lv${lv}\nHP:${Math.round(ch.baseHp*sc.hp)} 攻击:${Math.round(ch.atk*sc.atk)} 护甲:${Math.round(ch.armor*sc.armor)} 射程:${ch.range}\n技能:${ch.ab.name}\n${ch.ab.desc}`;
     card.addEventListener('click', () => selectChar(ch.id));
     grid.appendChild(card);
   });
@@ -1169,11 +992,17 @@ function selectChar(charId) {
   if (G.phase !== 'setup') return;
   const card = document.getElementById(`bc-${charId}`);
   if (card.classList.contains('placed')) return;
+
+  // Check max units
+  const playerCount = G.units.filter(u => u.team === 'player').length;
+  if (playerCount >= MAX_PLAYER_UNITS && !G.selChar) {
+    addLog(`最多上场${MAX_PLAYER_UNITS}个英雄！`, 'sys'); return;
+  }
+
   document.querySelectorAll('.bench-card').forEach(c => c.classList.remove('selected'));
   if (G.selChar === charId) { G.selChar = null; return; }
   card.classList.add('selected');
   G.selChar = charId;
-  addLog(`选择了 ${CHARS[charId].name}，点击绿色格子放置`, 'sys');
 }
 
 function updateSynPanel() {
@@ -1183,7 +1012,7 @@ function updateSynPanel() {
   G.synCounts = cnt;
 
   ['warrior','mage','priest'].forEach(cls => {
-    const c   = cnt[cls];
+    const c = cnt[cls];
     const syn = SYNERGIES[cls];
     const next = syn.thresholds.find(t => c < t) || syn.thresholds[syn.thresholds.length-1];
     document.getElementById(`sc-${cls}`).textContent = `${c}/${next}`;
@@ -1193,9 +1022,82 @@ function updateSynPanel() {
   });
 }
 
+function buildUpgradePanel() {
+  const list = document.getElementById('upgrade-list');
+  list.innerHTML = '';
+  const icons = { warrior:'⚔️', mage:'🔮', priest:'✨' };
+
+  ['warrior','mage','priest'].forEach(cls => {
+    const lv = GAME.classLevels[cls];
+    const cost = getUpgradeCost(cls);
+    const row = document.createElement('div');
+    row.className = 'upgrade-row';
+
+    const info = document.createElement('div');
+    info.className = 'upgrade-info';
+    info.innerHTML = `<div class="upgrade-cls">${icons[cls]} ${clsLabel(cls)}</div><div class="upgrade-lv">Lv${lv}${lv<5?' → Lv'+(lv+1):' MAX'}</div>`;
+
+    const btn = document.createElement('button');
+    btn.className = 'upgrade-btn' + (lv >= 5 ? ' maxed' : '');
+    if (lv >= 5) {
+      btn.textContent = 'MAX';
+      btn.disabled = true;
+    } else {
+      btn.textContent = `${cost}💰`;
+      btn.disabled = GAME.gold < cost;
+      btn.addEventListener('click', () => upgradeClass(cls));
+    }
+
+    row.appendChild(info);
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+function upgradeClass(cls) {
+  const cost = getUpgradeCost(cls);
+  if (!cost || GAME.gold < cost) return;
+  GAME.gold -= cost;
+  GAME.classLevels[cls]++;
+  addLog(`${clsLabel(cls)} 升级到 Lv${GAME.classLevels[cls]}！`, 'sys');
+
+  // Rebuild units with new level (keep positions)
+  const playerUnits = G.units.filter(u => u.team === 'player');
+  const layout = playerUnits.map(u => ({ charId: u.charId, col: u.col, row: u.row }));
+
+  // Remove and respawn with new stats
+  playerUnits.forEach(u => { if (u.gfx) { u.gfx.destroy(); u.gfx = null; } });
+  G.units = G.units.filter(u => u.team === 'enemy');
+
+  layout.forEach(l => {
+    const ch = CHARS[l.charId];
+    const lv = GAME.classLevels[ch.cls];
+    const u = makeUnit(ch, l.col, l.row, 'player', lv);
+    spawnUnit(u);
+    document.getElementById(`bc-${ch.id}`)?.classList.add('placed');
+  });
+
+  updateStatusBar();
+  buildUpgradePanel();
+  buildBench();
+  // Re-mark placed
+  G.units.filter(u => u.team === 'player').forEach(u => {
+    document.getElementById(`bc-${u.charId}`)?.classList.add('placed');
+  });
+  updateSynPanel();
+}
+
+function updateStatusBar() {
+  document.getElementById('st-stage').textContent = `第${GAME.stage+1}关 / 5`;
+  document.getElementById('st-gold').textContent = GAME.gold;
+  document.getElementById('st-lv-warrior').textContent = `Lv${GAME.classLevels.warrior}`;
+  document.getElementById('st-lv-mage').textContent = `Lv${GAME.classLevels.mage}`;
+  document.getElementById('st-lv-priest').textContent = `Lv${GAME.classLevels.priest}`;
+}
+
 function addLog(txt, type='') {
   const box = document.getElementById('log-content');
-  const el  = document.createElement('div');
+  const el = document.createElement('div');
   el.className = `log-e ${type}`;
   el.textContent = txt;
   box.appendChild(el);
@@ -1214,14 +1116,13 @@ function activeSyn(team) {
   });
   return result;
 }
-
 function spellPower(team) {
   const s = activeSyn(team);
-  return s.mage ? (s.mage.sp || 0) : 0;
+  return s.mage ? (s.mage.sp||0) : 0;
 }
 
 // ============================================================
-//  PixiJS 交互 (点击放置)
+//  PixiJS interaction
 // ============================================================
 app.stage.eventMode = 'static';
 app.stage.hitArea = new PIXI.Rectangle(0, 0, BF_W, BF_H);
@@ -1229,8 +1130,7 @@ app.stage.hitArea = new PIXI.Rectangle(0, 0, BF_W, BF_H);
 app.stage.on('pointermove', e => {
   if (G.phase !== 'setup') { showHoverCell(null, null); return; }
   const pos = e.getLocalPosition(app.stage);
-  const col = Math.floor(pos.x / CS);
-  const row = Math.floor(pos.y / CS);
+  const col = Math.floor(pos.x/CS), row = Math.floor(pos.y/CS);
   if (col >= 0 && col < COLS && row >= 0 && row < ROWS) showHoverCell(col, row);
   else showHoverCell(null, null);
 });
@@ -1238,59 +1138,72 @@ app.stage.on('pointermove', e => {
 app.stage.on('pointerdown', e => {
   if (G.phase !== 'setup') return;
   const pos = e.getLocalPosition(app.stage);
-  const col = Math.floor(pos.x / CS);
-  const row = Math.floor(pos.y / CS);
+  const col = Math.floor(pos.x/CS), row = Math.floor(pos.y/CS);
   if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
 
   if (!PLAYER_ROWS.includes(row)) {
-    addLog('只能在我方区域（下方2行）放置英雄', 'sys'); return;
+    addLog('只能在我方区域（下方）放置英雄', 'sys'); return;
   }
 
   const existing = G.units.find(u => u.team === 'player' && u.col === col && u.row === row);
 
   if (!G.selChar) {
-    if (existing) { removeUnit(existing); updateSynPanel(); }
+    if (existing) {
+      const cid = existing.charId;
+      removeUnit(existing); updateSynPanel();
+      document.getElementById(`bc-${cid}`)?.classList.remove('placed');
+    }
     return;
   }
 
-  const already = G.units.find(u => u.team === 'player' && u.charId === G.selChar);
-  if (already) {
-    addLog(`${CHARS[G.selChar].name} 已在场上`, 'sys'); return;
+  // Check max
+  const playerCount = G.units.filter(u => u.team === 'player').length;
+  if (playerCount >= MAX_PLAYER_UNITS && !existing) {
+    addLog(`最多上场${MAX_PLAYER_UNITS}个英雄！`, 'sys'); return;
   }
-  if (existing) { removeUnit(existing); }
+
+  const already = G.units.find(u => u.team === 'player' && u.charId === G.selChar);
+  if (already) { addLog(`${CHARS[G.selChar].name} 已在场上`, 'sys'); return; }
+  if (existing) {
+    const cid = existing.charId;
+    removeUnit(existing);
+    document.getElementById(`bc-${cid}`)?.classList.remove('placed');
+  }
 
   const ch = CHARS[G.selChar];
-  const u  = makeUnit(ch, col, row, 'player');
+  const lv = GAME.classLevels[ch.cls];
+  const u = makeUnit(ch, col, row, 'player', lv);
   spawnUnit(u);
   document.getElementById(`bc-${G.selChar}`).classList.add('placed');
   document.querySelectorAll('.bench-card').forEach(c => c.classList.remove('selected'));
   G.selChar = null;
   updateSynPanel();
-  addLog(`${ch.name} 已入场！`, 'sys');
 });
 
 // ============================================================
-//  控制按钮
+//  Controls
 // ============================================================
 document.getElementById('btn-start').addEventListener('click', startBattle);
-document.getElementById('btn-reset').addEventListener('click', resetGame);
+document.getElementById('btn-reset').addEventListener('click', resetLayout);
 document.getElementById('btn-auto').addEventListener('click', autoFill);
 
 function autoFill() {
   if (G.phase !== 'setup') return;
+  // Clear player units
   G.units.filter(u => u.team === 'player').forEach(u => {
     if (u.gfx) { u.gfx.destroy(); u.gfx = null; }
-    const card = document.getElementById(`bc-${u.charId}`);
-    if (card) card.classList.remove('placed', 'selected');
+    document.getElementById(`bc-${u.charId}`)?.classList.remove('placed', 'selected');
   });
   G.units = G.units.filter(u => u.team === 'enemy');
 
-  const allIds = Object.keys(CHARS).sort(() => Math.random() - 0.5);
-  const picks  = allIds.slice(0, 5);
-  const slots  = [{col:0,row:3},{col:2,row:3},{col:4,row:3},{col:6,row:3},{col:1,row:2},{col:3,row:2},{col:5,row:2}];
+  const allIds = Object.keys(CHARS).sort(() => Math.random()-0.5);
+  const picks = allIds.slice(0, 5);
+  const slots = [{col:0,row:7},{col:2,row:7},{col:4,row:7},{col:6,row:7},{col:1,row:6}];
 
   picks.forEach((id, i) => {
-    const u = makeUnit(CHARS[id], slots[i].col, slots[i].row, 'player');
+    const ch = CHARS[id];
+    const lv = GAME.classLevels[ch.cls];
+    const u = makeUnit(ch, slots[i].col, slots[i].row, 'player', lv);
     spawnUnit(u);
     document.getElementById(`bc-${id}`)?.classList.add('placed');
   });
@@ -1298,35 +1211,59 @@ function autoFill() {
   addLog('随机阵容已就绪！', 'sys');
 }
 
+function resetLayout() {
+  if (G.phase !== 'setup') return;
+  G.units.filter(u => u.team === 'player').forEach(u => {
+    if (u.gfx) { u.gfx.destroy(); u.gfx = null; }
+    document.getElementById(`bc-${u.charId}`)?.classList.remove('placed', 'selected');
+  });
+  G.units = G.units.filter(u => u.team === 'enemy');
+  G.selChar = null;
+  updateSynPanel();
+  addLog('布阵已清空', 'sys');
+}
+
 // ============================================================
-//  战斗逻辑
+//  Battle
 // ============================================================
 function startBattle() {
   const pu = G.units.filter(u => u.team === 'player');
   if (!pu.length) { addLog('请先放置至少一个英雄！', 'sys'); return; }
 
+  // Save layout for next round
+  GAME.playerLayout = pu.map(u => ({ charId: u.charId, col: u.col, row: u.row }));
+
   G.phase = 'battle';
   G.healTimer = 0;
-  document.getElementById('phase-badge').textContent = '⚔ 战斗中';
+  G.battleStartTime = Date.now();
+  G.battleElapsed = 0;
+  G.killCount = 0;
+  G.goldEarned = 0;
+
+  document.getElementById('phase-badge').textContent = `⚔ 战斗中 · 第${GAME.stage+1}关`;
   document.getElementById('btn-start').disabled = true;
-  document.getElementById('btn-auto').disabled  = true;
+  document.getElementById('btn-auto').disabled = true;
+  document.getElementById('btn-reset').disabled = true;
   document.getElementById('hint-txt').textContent = '';
   showHoverCell(null, null);
-  addLog('━━━ 战斗开始！━━━', 'sys');
+  addLog(`━━━ 第${GAME.stage+1}关 【${STAGES[GAME.stage].name}】开始！━━━`, 'sys');
 
-  // 应用战士HP羁绊
+  // Apply warrior synergy HP
   const ps = activeSyn('player');
   if (ps.warrior) {
     G.units.filter(u => u.team === 'player' && u.cls === 'warrior').forEach(u => {
-      u.maxHp += ps.warrior.hp || 0;
-      u.hp    += ps.warrior.hp || 0;
-      refreshUnitBars(u);
+      u.maxHp += ps.warrior.hp||0; u.hp += ps.warrior.hp||0; refreshUnitBars(u);
     });
   }
 }
 
 function battleUpdate(dt) {
   if (G.phase !== 'battle') return;
+
+  G.battleElapsed += dt;
+  const seconds = Math.floor(G.battleElapsed);
+  const ms = Math.floor((G.battleElapsed % 1) * 10);
+  document.getElementById('battle-timer').textContent = `⏱ ${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}.${ms}`;
 
   const now = Date.now();
   const alive = G.units.filter(u => u.hp > 0);
@@ -1337,51 +1274,34 @@ function battleUpdate(dt) {
 
   // Priest heal timer
   G.healTimer += dt;
-  if (G.healTimer >= 3.0) {
-    G.healTimer -= 3.0;
-    priestHeal();
-  }
+  if (G.healTimer >= 3.0) { G.healTimer -= 3.0; priestHeal(); }
 
   alive.forEach(u => {
     if (u.stunUntil > now) return;
-    if (u.shielded && u.shieldEnd < now) {
-      u.shielded = false;
-      removeShieldGfx(u);
-    }
+    if (u.shielded && u.shieldEnd < now) { u.shielded = false; removeShieldGfx(u); }
     if (u.buffEnd < now && u.atkMult > 1) u.atkMult = 1.0;
 
-    const foes  = u.team === 'player' ? ea : pa;
+    const foes = u.team === 'player' ? ea : pa;
     const mates = u.team === 'player' ? pa : ea;
     if (!foes.length) return;
 
-    const tgt  = nearest(u, foes);
+    const tgt = nearest(u, foes);
     const dist = chebyshev(u, tgt);
 
-    if (u.mana >= u.maxMana && now - u.lastAb > 800) {
-      castAbility(u, tgt, foes, mates, now);
-      return;
-    }
-    if (dist <= u.range) {
-      if (now - u.lastAtk >= u.atkMs) doAtk(u, tgt, now);
-    } else {
-      // Move every ~420ms (3 ticks at 140ms)
-      G.tick++;
-      if (G.tick % 3 === 0) moveStep(u, tgt);
-    }
+    if (u.mana >= u.maxMana && now - u.lastAb > 800) { castAbility(u, tgt, foes, mates, now); return; }
+    if (dist <= u.range) { if (now - u.lastAtk >= u.atkMs) doAtk(u, tgt, now); }
+    else { G.tick++; if (G.tick % 3 === 0) moveStep(u, tgt); }
   });
 
-  // Smooth unit position update
+  // Smooth position
   alive.forEach(u => {
     if (!u.gfx) return;
     const target = cellCenter(u.col, u.row);
-    // Lerp for smooth movement
-    u.gfx.x += (target.x - u.gfx.x) * Math.min(1, dt * 8);
-    u.gfx.y += (target.y - u.gfx.y) * Math.min(1, dt * 8);
-
-    // Shield pulse
+    u.gfx.x += (target.x - u.gfx.x) * Math.min(1, dt*8);
+    u.gfx.y += (target.y - u.gfx.y) * Math.min(1, dt*8);
     if (u._shieldGfx && !u._shieldGfx.destroyed) {
-      u._shieldPulse = (u._shieldPulse || 0) + dt * 4;
-      u._shieldGfx.alpha = 0.6 + Math.sin(u._shieldPulse) * 0.3;
+      u._shieldPulse = (u._shieldPulse||0) + dt*4;
+      u._shieldGfx.alpha = 0.6 + Math.sin(u._shieldPulse)*0.3;
     }
   });
 }
@@ -1395,7 +1315,6 @@ function priestHeal() {
       const h = Math.min(hpt, u.maxHp - u.hp);
       if (h > 0) { u.hp += h; showDmgText(u, `+${h}`, 'heal'); refreshUnitBars(u); }
     });
-    addLog(`${team==='player'?'我方':'敌方'}牧师羁绊治疗 ${hpt} HP`, 'heal');
   });
 }
 
@@ -1403,133 +1322,74 @@ function doAtk(u, tgt, now) {
   u.lastAtk = now;
   let dmg = Math.round(u.atk * u.atkMult - tgt.armor * 0.45);
   dmg = Math.max(1, dmg);
-
   animAttack(u, tgt);
 
   if (tgt.shielded) {
-    tgt.shielded = false;
-    removeShieldGfx(tgt);
+    tgt.shielded = false; removeShieldGfx(tgt);
     showDmgText(tgt, '格挡!', 'info');
-    addLog(`${u.name} 攻击 ${tgt.name}，被神盾格挡`, 'atk');
-    spawnParticles(tgt.gfx?.x || 0, tgt.gfx?.y || 0, 0xddddff, 6, { spread: 40, life: 0.3 });
+    spawnParticles(tgt.gfx?.x||0, tgt.gfx?.y||0, 0xddddff, 6, {spread:40, life:0.3});
   } else {
     applyDmg(tgt, dmg, 'phys');
-    addLog(`${u.name} → ${tgt.name} 造成 ${dmg} 伤害`, 'atk');
     animHit(tgt);
   }
-
-  u.mana   = Math.min(u.maxMana, u.mana + 15);
+  u.mana = Math.min(u.maxMana, u.mana + 15);
   tgt.mana = Math.min(tgt.maxMana, tgt.mana + 8);
-  refreshUnitBars(u);
-  refreshUnitBars(tgt);
+  refreshUnitBars(u); refreshUnitBars(tgt);
 }
 
 function castAbility(u, tgt, foes, mates, now) {
-  u.mana   = 0;
-  u.lastAb = now;
+  u.mana = 0; u.lastAb = now;
   animCast(u);
   addLog(`✦ ${u.name} 释放【${u.ab.name}】`, 'ability');
-
   const sp = spellPower(u.team);
 
   switch (u.ab.type) {
     case 'buff':
       mates.filter(m => m.hp > 0 && chebyshev(u,m) <= u.ab.radius).forEach(m => {
-        m.atkMult = 1 + u.ab.buffAmt;
-        m.buffEnd = now + u.ab.dur;
+        m.atkMult = 1 + u.ab.buffAmt; m.buffEnd = now + u.ab.dur;
         showDmgText(m, `+${Math.round(u.ab.buffAmt*100)}%ATK`, 'heal');
-        if (m.gfx) spawnParticles(m.gfx.x, m.gfx.y, 0xff6644, 5, { spread: 30, upward: 30, life: 0.4 });
-      });
-      break;
-
+        if (m.gfx) spawnParticles(m.gfx.x, m.gfx.y, 0xff6644, 5, {spread:30, upward:30, life:0.4});
+      }); break;
     case 'physical':
-      if (tgt.hp > 0) {
-        const d = Math.round(u.atk * u.ab.mult);
-        applyDmg(tgt, d, 'phys');
-        showSpellFx(tgt, '💥', 0xff4422);
-        animHit(tgt);
-      }
-      break;
-
+      if (tgt.hp > 0) { applyDmg(tgt, Math.round(u.atk*u.ab.mult), 'phys'); showSpellFx(tgt,'💥',0xff4422); animHit(tgt); } break;
     case 'shield':
-      u.shielded  = true;
-      u.shieldEnd = now + u.ab.dur;
-      addShieldGfx(u);
-      showDmgText(u, '神盾！', 'heal');
-      break;
-
+      u.shielded = true; u.shieldEnd = now + u.ab.dur;
+      addShieldGfx(u); showDmgText(u, '神盾！', 'heal'); break;
     case 'aoe':
       foes.filter(f => f.hp > 0).forEach(f => {
-        const d = Math.round(u.ab.dmg * (1 + sp));
-        applyDmg(f, d, 'magic');
-        showSpellFx(f, '❄️', 0x88ccff);
-        animHit(f);
-      });
-      break;
-
+        applyDmg(f, Math.round(u.ab.dmg*(1+sp)), 'magic'); showSpellFx(f,'❄️',0x88ccff); animHit(f);
+      }); break;
     case 'missiles':
       for (let i = 0; i < u.ab.count; i++) {
         const living = foes.filter(f => f.hp > 0);
         if (!living.length) break;
-        const r = living[Math.floor(Math.random() * living.length)];
-        const d = Math.round(u.ab.dmg * (1 + sp));
-        setTimeout(() => {
-          if (r.hp > 0) {
-            applyDmg(r, d, 'magic');
-            showSpellFx(r, '🔮', 0xaa66ff);
-            animHit(r);
-          }
-        }, i * 140);
-      }
-      break;
-
+        const r = living[Math.floor(Math.random()*living.length)];
+        const d = Math.round(u.ab.dmg*(1+sp));
+        setTimeout(() => { if (r.hp > 0) { applyDmg(r,d,'magic'); showSpellFx(r,'🔮',0xaa66ff); animHit(r); } }, i*140);
+      } break;
     case 'magic':
-      if (tgt.hp > 0) {
-        const d = Math.round(u.ab.dmg * (1 + sp));
-        applyDmg(tgt, d, 'magic');
-        showSpellFx(tgt, '🔥', 0xff6622);
-        animHit(tgt);
-      }
-      break;
-
+      if (tgt.hp > 0) { applyDmg(tgt, Math.round(u.ab.dmg*(1+sp)), 'magic'); showSpellFx(tgt,'🔥',0xff6622); animHit(tgt); } break;
     case 'heal': {
       const lowest = mates.filter(m => m.hp > 0).sort((a,b) => a.hp/a.maxHp - b.hp/b.maxHp)[0];
       if (lowest) {
         const h = Math.min(u.ab.amt, lowest.maxHp - lowest.hp);
-        lowest.hp += h;
-        showDmgText(lowest, `+${h}`, 'heal');
-        showSpellFx(lowest, '✨', 0x44ee66);
-        refreshUnitBars(lowest);
-        addLog(`${u.name} 治疗了 ${lowest.name} +${h}`, 'heal');
-      }
-      break;
+        lowest.hp += h; showDmgText(lowest, `+${h}`, 'heal'); showSpellFx(lowest,'✨',0x44ee66); refreshUnitBars(lowest);
+      } break;
     }
-
     case 'stun':
       if (tgt.hp > 0) {
-        const d = Math.round(u.ab.dmg * (1 + sp));
-        applyDmg(tgt, d, 'magic');
+        applyDmg(tgt, Math.round(u.ab.dmg*(1+sp)), 'magic');
         tgt.stunUntil = now + u.ab.stunMs;
-        showSpellFx(tgt, '🌙', 0xaaaaff);
-        showDmgText(tgt, '眩晕!', 'info');
-        addLog(`${tgt.name} 被眩晕 ${u.ab.stunMs/1000}秒`, 'ability');
-        animHit(tgt);
-      }
-      break;
-
+        showSpellFx(tgt,'🌙',0xaaaaff); showDmgText(tgt,'眩晕!','info'); animHit(tgt);
+      } break;
     case 'mass_heal':
       mates.filter(m => m.hp > 0).forEach(m => {
         const h = Math.min(u.ab.amt, m.maxHp - m.hp);
-        m.hp += h;
-        showDmgText(m, `+${h}`, 'heal');
-        refreshUnitBars(m);
-        if (m.gfx) spawnParticles(m.gfx.x, m.gfx.y, 0x44ee66, 4, { spread: 25, upward: 20, life: 0.3 });
+        m.hp += h; showDmgText(m, `+${h}`, 'heal'); refreshUnitBars(m);
+        if (m.gfx) spawnParticles(m.gfx.x, m.gfx.y, 0x44ee66, 4, {spread:25, upward:20, life:0.3});
       });
-      showSpellFx(u, '💫', 0xffee44);
-      addLog(`${u.name} 治愈了所有友军`, 'heal');
-      break;
+      showSpellFx(u,'💫',0xffee44); break;
   }
-
   refreshUnitBars(u);
 }
 
@@ -1544,186 +1404,288 @@ function applyDmg(u, dmg, type) {
 function killUnit(u) {
   addLog(`${u.name} 阵亡！`, 'death');
   animDeath(u);
+
+  // Gold reward for killing enemy
+  if (u.team === 'enemy') {
+    G.killCount++;
+    const stage = STAGES[GAME.stage];
+    const elapsed = G.battleElapsed;
+    const mult = speedMult(elapsed);
+    const goldGain = Math.round(stage.dropBase * mult);
+    G.goldEarned += goldGain;
+    GAME.gold += goldGain;
+    updateStatusBar();
+    // Show gold text
+    if (u.gfx) {
+      const goldTxt = new PIXI.Text(`+${goldGain}💰`, {
+        fontSize:16, fontFamily:'Georgia, serif', fontWeight:'bold',
+        fill:0xffd700, stroke:0x000000, strokeThickness:3,
+      });
+      goldTxt.anchor.set(0.5);
+      goldTxt.x = u.gfx.x; goldTxt.y = u.gfx.y - 30;
+      textLayer.addChild(goldTxt);
+      tween(goldTxt, {y: goldTxt.y-60, alpha:0}, 1.2, 'easeOut', () => goldTxt.destroy());
+    }
+    addLog(`击杀 ${u.name} 获得 ${goldGain} 金币`, 'gold');
+  }
 }
 
 // ============================================================
-//  移动
+//  Movement
 // ============================================================
 function moveStep(u, tgt) {
-  const dx = tgt.col - u.col, dy = tgt.row - u.row;
+  const dx = tgt.col-u.col, dy = tgt.row-u.row;
   let nc = u.col, nr = u.row;
   if (Math.abs(dx) >= Math.abs(dy)) nc += Math.sign(dx);
   else nr += Math.sign(dy);
-
   const blocked = G.units.find(x => x.hp > 0 && x.uid !== u.uid && x.col === nc && x.row === nr);
-  if (!blocked && nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
-    u.col = nc; u.row = nr;
-  }
+  if (!blocked && nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) { u.col = nc; u.row = nr; }
 }
-
-function nearest(u, list) {
-  return list.reduce((best, x) => chebyshev(u,x) < chebyshev(u,best) ? x : best);
-}
-function chebyshev(a, b) {
-  return Math.max(Math.abs(a.col-b.col), Math.abs(a.row-b.row));
-}
+function nearest(u, list) { return list.reduce((best, x) => chebyshev(u,x) < chebyshev(u,best) ? x : best); }
+function chebyshev(a, b) { return Math.max(Math.abs(a.col-b.col), Math.abs(a.row-b.row)); }
 
 // ============================================================
-//  结束
+//  End battle / Stage flow
 // ============================================================
 function endBattle(winner) {
   G.phase = 'result';
-  addLog(`━━━ 战斗结束！${winner==='player'?'我方':'敌方'}获胜！━━━`, 'sys');
+  document.getElementById('battle-timer').textContent = '';
 
-  // Victory / defeat particles
-  const color = winner === 'player' ? 0xffd700 : 0xcc4444;
-  for (let i = 0; i < 5; i++) {
-    setTimeout(() => {
-      spawnParticles(BF_W/2 + (Math.random()-0.5)*300, BF_H/2, color, 25, { spread: 150, upward: 80, life: 1.2, gravity: 50 });
-    }, i * 200);
-  }
+  const stage = STAGES[GAME.stage];
+  const elapsed = G.battleElapsed;
+  const secs = elapsed.toFixed(1);
+  const sm = speedMult(elapsed);
+  const sl = speedLabel(elapsed);
 
-  setTimeout(() => {
-    const overlay = document.getElementById('result-overlay');
-    const txt = document.getElementById('result-txt');
-    const sub = document.getElementById('result-sub');
-    if (winner === 'player') {
-      txt.textContent = '🏆 胜利！';
-      txt.style.color = '#ffd700';
-      sub.textContent = '联盟万岁！';
-    } else {
-      txt.textContent = '💀 败北…';
-      txt.style.color = '#cc4444';
-      sub.textContent = '为了部落！';
+  if (winner === 'player') {
+    // Clear bonus
+    const clearGold = stage.clearBonus;
+    GAME.gold += clearGold;
+    G.goldEarned += clearGold;
+    updateStatusBar();
+
+    addLog(`━━━ 第${GAME.stage+1}关 通关！━━━`, 'sys');
+
+    // Victory particles
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => spawnParticles(BF_W/2+(Math.random()-0.5)*300, BF_H/2, 0xffd700, 25, {spread:150, upward:80, life:1.2, gravity:50}), i*200);
     }
-    overlay.classList.add('show');
-  }, 1200);
+
+    const isLastStage = GAME.stage >= STAGES.length - 1;
+
+    setTimeout(() => {
+      const overlay = document.getElementById('result-overlay');
+      const txt = document.getElementById('result-txt');
+      const sub = document.getElementById('result-sub');
+      const details = document.getElementById('result-details');
+      const btns = document.getElementById('result-buttons');
+
+      if (isLastStage) {
+        txt.textContent = '🏆 通关！';
+        txt.style.color = '#ffd700';
+        sub.textContent = '恭喜你通过了所有关卡！';
+      } else {
+        txt.textContent = `✅ 第${GAME.stage+1}关 通关`;
+        txt.style.color = '#44cc66';
+        sub.textContent = stage.name;
+      }
+
+      details.innerHTML = `
+        击杀: ${G.killCount}/5 | 用时: ${secs}秒 | ${sl}<br>
+        速度倍率: ×${sm} | 击杀金币: ${G.goldEarned - clearGold}<br>
+        <span class="gold-line">通关奖励: +${clearGold} | 本关总计: +${G.goldEarned} 💰</span><br>
+        当前金币: ${GAME.gold}
+      `;
+
+      btns.innerHTML = '';
+      if (isLastStage) {
+        const b = document.createElement('button');
+        b.className = 'btn primary';
+        b.textContent = '🔄 重新挑战';
+        b.addEventListener('click', fullReset);
+        btns.appendChild(b);
+      } else {
+        const b = document.createElement('button');
+        b.className = 'btn primary';
+        b.textContent = `▶ 进入第${GAME.stage+2}关`;
+        b.addEventListener('click', nextStage);
+        btns.appendChild(b);
+      }
+
+      overlay.classList.add('show');
+    }, 1000);
+
+  } else {
+    // Player lost
+    addLog(`━━━ 第${GAME.stage+1}关 失败 ━━━`, 'sys');
+
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => spawnParticles(BF_W/2+(Math.random()-0.5)*200, BF_H/2, 0xcc4444, 15, {spread:100, life:0.8, gravity:80}), i*200);
+    }
+
+    setTimeout(() => {
+      const overlay = document.getElementById('result-overlay');
+      const txt = document.getElementById('result-txt');
+      const sub = document.getElementById('result-sub');
+      const details = document.getElementById('result-details');
+      const btns = document.getElementById('result-buttons');
+
+      txt.textContent = '💀 战斗失败';
+      txt.style.color = '#cc4444';
+      sub.textContent = `第${GAME.stage+1}关 · ${stage.name}`;
+      details.innerHTML = `击杀: ${G.killCount}/5 | 已获金币: +${G.goldEarned}<br>当前金币: ${GAME.gold}`;
+
+      btns.innerHTML = '';
+      const b1 = document.createElement('button');
+      b1.className = 'btn primary';
+      b1.textContent = '🔄 重试本关';
+      b1.addEventListener('click', retryStage);
+      btns.appendChild(b1);
+
+      const b2 = document.createElement('button');
+      b2.className = 'btn';
+      b2.textContent = '↺ 重新开始';
+      b2.addEventListener('click', fullReset);
+      btns.appendChild(b2);
+
+      overlay.classList.add('show');
+    }, 1000);
+  }
 }
 
-function resetGame() {
-  // Destroy all unit graphics
-  G.units.forEach(u => {
-    if (u.gfx) { u.gfx.destroy(); u.gfx = null; }
-  });
-  // Clear layers
-  unitLayer.removeChildren();
-  effectLayer.removeChildren();
-  textLayer.removeChildren();
-  // Clear tweens and particles
-  tweens.length = 0;
-  particles.length = 0;
+function nextStage() {
+  GAME.stage++;
+  document.getElementById('result-overlay').classList.remove('show');
+  setupStage();
+}
+
+function retryStage() {
+  document.getElementById('result-overlay').classList.remove('show');
+  setupStage();
+}
+
+function fullReset() {
+  GAME = { stage: 0, gold: 0, classLevels: {warrior:1, mage:1, priest:1}, playerLayout: [] };
+  document.getElementById('result-overlay').classList.remove('show');
+  setupStage();
+}
+
+function setupStage() {
+  // Clear everything
+  G.units.forEach(u => { if (u.gfx) { u.gfx.destroy(); u.gfx = null; } });
+  unitLayer.removeChildren(); effectLayer.removeChildren(); textLayer.removeChildren();
+  tweens.length = 0; particles.length = 0;
 
   G = newState();
-  document.getElementById('result-overlay').classList.remove('show');
-  document.getElementById('phase-badge').textContent = '准备阶段';
+  document.getElementById('phase-badge').textContent = `准备阶段 · 第${GAME.stage+1}关`;
   document.getElementById('btn-start').disabled = false;
-  document.getElementById('btn-auto').disabled  = false;
+  document.getElementById('btn-auto').disabled = false;
+  document.getElementById('btn-reset').disabled = false;
   document.getElementById('hint-txt').textContent = '选择英雄放置到绿色区域';
+  document.getElementById('battle-timer').textContent = '';
   document.getElementById('log-content').innerHTML = '';
 
   drawGrid();
   buildBench();
+  buildUpgradePanel();
+  updateStatusBar();
   placeEnemies();
+
+  // Restore player layout if available
+  if (GAME.playerLayout.length) {
+    GAME.playerLayout.forEach(l => {
+      const ch = CHARS[l.charId];
+      if (!ch) return;
+      const lv = GAME.classLevels[ch.cls];
+      const u = makeUnit(ch, l.col, l.row, 'player', lv);
+      spawnUnit(u);
+      document.getElementById(`bc-${ch.id}`)?.classList.add('placed');
+    });
+  }
+
   updateSynPanel();
-  addLog('已重置，重新开始吧！', 'sys');
+
+  const stage = STAGES[GAME.stage];
+  addLog(`═══ 第${GAME.stage+1}关：${stage.name} ═══`, 'sys');
+  addLog(`敌方等级 Lv${stage.enemyLv}，消灭全部敌人即可通关`, 'sys');
+  if (GAME.gold > 0) addLog(`当前金币: ${GAME.gold}，可在左侧面板升级职业`, 'sys');
 }
 
 function placeEnemies() {
-  ENEMY_PRESET.forEach(p => {
-    const u = makeUnit(CHARS[p.id], p.col, p.row, 'enemy');
+  const stage = STAGES[GAME.stage];
+  stage.units.forEach((charId, i) => {
+    const ch = CHARS[charId];
+    const pos = stage.positions[i];
+    const u = makeUnit(ch, pos.col, pos.row, 'enemy', stage.enemyLv);
     spawnUnit(u);
   });
 }
 
 // ============================================================
-//  主循环 (60fps PixiJS ticker)
+//  Main loop
 // ============================================================
 let fpsFrames = 0, fpsTime = 0;
 app.ticker.add((delta) => {
-  const dt = delta / 60; // Convert to seconds
-
+  const dt = delta / 60;
   updateTweens(dt);
   updateParticles(dt);
   battleUpdate(dt);
-
-  // FPS counter
-  fpsTime += dt;
-  fpsFrames++;
+  fpsTime += dt; fpsFrames++;
   if (fpsTime >= 1.0) {
-    document.getElementById('fps-counter').textContent = `${Math.round(fpsFrames / fpsTime)} FPS`;
-    fpsFrames = 0;
-    fpsTime = 0;
+    document.getElementById('fps-counter').textContent = `${Math.round(fpsFrames/fpsTime)} FPS`;
+    fpsFrames = 0; fpsTime = 0;
   }
 });
 
 // ============================================================
-//  Canvas自适应缩放 (手机横屏适配)
+//  Canvas resize
 // ============================================================
 function resizeCanvas() {
   const container = document.getElementById('pixi-container');
   const isMobile = window.innerWidth <= 900;
-
   if (!isMobile) {
-    // Desktop: use original size
-    container.style.width = '';
-    container.style.height = '';
-    app.renderer.resize(BF_W, BF_H);
-    app.stage.scale.set(1);
-    return;
+    container.style.width = ''; container.style.height = '';
+    app.renderer.resize(BF_W, BF_H); app.stage.scale.set(1); return;
   }
-
-  // Mobile landscape: fit canvas into available space
-  // Panels: synergy(~94px) + side(~114px) + gaps+borders(~20px)
   const panelsW = 94 + 114 + 20;
   const availW = window.innerWidth - panelsW;
-  // Height: viewport - header(~24px) - controls(~26px) - zone labels(~16px) - padding(~10px)
-  const availH = window.innerHeight - 76;
-
-  const scaleX = availW / BF_W;
-  const scaleY = availH / BF_H;
-  const scale = Math.min(scaleX, scaleY, 1);
-
-  const displayW = Math.floor(BF_W * scale);
-  const displayH = Math.floor(BF_H * scale);
-
-  container.style.width = displayW + 'px';
-  container.style.height = displayH + 'px';
-
+  const availH = window.innerHeight - 90;
+  const scale = Math.min(availW/BF_W, availH/BF_H, 1);
+  const displayW = Math.floor(BF_W*scale), displayH = Math.floor(BF_H*scale);
+  container.style.width = displayW+'px'; container.style.height = displayH+'px';
   app.renderer.resize(BF_W, BF_H);
-  app.view.style.width = displayW + 'px';
-  app.view.style.height = displayH + 'px';
+  app.view.style.width = displayW+'px'; app.view.style.height = displayH+'px';
 }
-
 window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', () => {
-  setTimeout(resizeCanvas, 200);
-});
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
 
 // ============================================================
-//  初始化
+//  Init
 // ============================================================
 const TEXTURES = {};
 const PORTRAIT_IDS = ['garrosh','varian','bolvar','jaina','khadgar','antonidas','anduin','tyrande','velen'];
 
 async function preloadTextures() {
   for (const id of PORTRAIT_IDS) {
-    try {
-      TEXTURES[id] = await PIXI.Assets.load(`assets/${id}.png`);
-    } catch(e) {
-      console.warn('texture load failed:', id, e);
-    }
+    try { TEXTURES[id] = await PIXI.Assets.load(`assets/${id}.png`); }
+    catch(e) { console.warn('texture load failed:', id, e); }
   }
-  console.log('Textures loaded:', Object.keys(TEXTURES));
 }
 
 function init() {
   drawGrid();
   buildBench();
+  buildUpgradePanel();
+  updateStatusBar();
   placeEnemies();
   updateSynPanel();
   resizeCanvas();
-  addLog('欢迎来到魔兽自走棋！', 'sys');
+
+  const stage = STAGES[0];
+  addLog('═══ 魔兽自走棋PK · 闯关模式 ═══', 'sys');
+  addLog(`第1关：${stage.name}`, 'sys');
   addLog('选择英雄放到绿色区域，然后开始战斗。', 'sys');
+  addLog('击杀敌人获取金币，金币可升级职业。', 'sys');
 }
 
 preloadTextures().then(() => init()).catch(() => init());
