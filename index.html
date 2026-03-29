@@ -1833,13 +1833,11 @@ app.ticker.add((delta) => {
 function resizeCanvas() {
   const container = document.getElementById('pixi-container');
   const isMobile = window.innerWidth <= 900;
-  if (!isMobile) {
-    container.style.width = ''; container.style.height = '';
-    app.renderer.resize(BF_W, BF_H); app.stage.scale.set(1); return;
-  }
-  const panelsW = 94 + 114 + 20;
+  // Calculate available height: viewport minus header/tab/status/controls/zone labels
+  const overhead = isMobile ? 70 : 180; // header+tab+status+controls+labels+margins
+  const panelsW = isMobile ? (84 + 104 + 16) : 0;
   const availW = window.innerWidth - panelsW;
-  const availH = window.innerHeight - 90;
+  const availH = window.innerHeight - overhead;
   const scale = Math.min(availW/BF_W, availH/BF_H, 1);
   const displayW = Math.floor(BF_W*scale), displayH = Math.floor(BF_H*scale);
   container.style.width = displayW+'px'; container.style.height = displayH+'px';
@@ -2599,13 +2597,10 @@ app2.ticker.add((delta) => {
 function resizeCanvas2() {
   const container = document.getElementById('p2-pixi-container');
   const isMobile = window.innerWidth <= 900;
-  if (!isMobile) {
-    container.style.width = ''; container.style.height = '';
-    app2.renderer.resize(BF_W, BF_H); app2.stage.scale.set(1); return;
-  }
-  const panelsW = 94 + 114 + 20;
+  const overhead = isMobile ? 70 : 180;
+  const panelsW = isMobile ? (84 + 104 + 16) : 0;
   const availW = window.innerWidth - panelsW;
-  const availH = window.innerHeight - 90;
+  const availH = window.innerHeight - overhead;
   const scale = Math.min(availW/BF_W, availH/BF_H, 1);
   const displayW = Math.floor(BF_W*scale), displayH = Math.floor(BF_H*scale);
   container.style.width = displayW+'px'; container.style.height = displayH+'px';
