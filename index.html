@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>魔兽自走棋PK - 闯关模式</title>
+<title>魔兽自走棋PK - 双人竞速闯关</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -181,7 +181,8 @@ body {
   overflow: hidden;
   box-shadow: 0 6px 30px rgba(0,0,0,0.8);
 }
-#pixi-container canvas { display: block; }
+#pixi-container canvas, #p2-pixi-container canvas { display: block; }
+#p2-main-area { display: flex; width: 100%; gap: 10px; align-items: flex-start; }
 
 /* ===== SIDE PANEL ===== */
 #side-panel {
@@ -306,6 +307,51 @@ body {
 #result-details .gold-line { color: #ffd700; font-size: 1.1em; }
 #result-buttons { display: flex; gap: 12px; }
 
+/* ===== PLAYER TABS ===== */
+#tab-bar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  background: rgba(20,14,6,0.95);
+  border-bottom: 2px solid var(--gold-dark);
+}
+.tab-btn {
+  padding: 8px 28px;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-family: Georgia, serif;
+  font-size: 0.85em;
+  letter-spacing: 2px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+.tab-btn:hover { color: var(--gold-light); }
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); background: rgba(200,168,75,0.08); }
+.tab-btn .tab-stage { font-size: 0.7em; color: #888; margin-left: 6px; }
+.tab-btn.active .tab-stage { color: var(--gold-light); }
+.tab-btn .tab-status { font-size: 0.6em; display: block; color: #555; }
+.tab-btn.active .tab-status { color: #999; }
+.tab-btn.p2 { border-left: 1px solid var(--gold-dark); }
+#p2-overlay {
+  display: none;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  background: rgba(200,168,75,0.08);
+  color: var(--gold);
+  font-size: 0.75em;
+  text-align: center;
+  padding: 2px;
+  pointer-events: none;
+  z-index: 10;
+}
+#p2-overlay.show { display: block; }
+.game-tab { display: none; flex-direction: column; align-items: center; width: 100%; gap: 6px; }
+.game-tab.active { display: flex; }
+
 /* ===== PORTRAIT LOCK ===== */
 #rotate-overlay {
   display: none; position: fixed; inset: 0;
@@ -379,9 +425,21 @@ body {
   <h1>⚔️ 魔兽自走棋PK ⚔️</h1>
 </div>
 
+<!-- 玩家标签页 -->
+<div id="tab-bar">
+  <button class="tab-btn active" id="tab-p1" onclick="switchTab(1)">
+    👤 玩家1 (你)<span class="tab-stage" id="tab-p1-stage">第1关</span>
+    <span class="tab-status" id="tab-p1-status">准备中</span>
+  </button>
+  <button class="tab-btn p2" id="tab-p2" onclick="switchTab(2)">
+    🤖 玩家2 (AI)<span class="tab-stage" id="tab-p2-stage">第1关</span>
+    <span class="tab-status" id="tab-p2-status">准备中</span>
+  </button>
+</div>
+
 <!-- 状态栏 -->
 <div id="status-bar">
-  <div class="status-item"><span class="status-label">关卡</span><span class="status-val" id="st-stage">第1关 / 5</span></div>
+  <div class="status-item"><span class="status-label">关卡</span><span class="status-val" id="st-stage">第1关 / 20</span></div>
   <div class="status-item"><span class="status-label">💰</span><span class="status-val gold-val" id="st-gold">0</span></div>
   <div class="status-item"><span class="status-label">⚔️</span><span class="status-val lv-warrior" id="st-lv-warrior">Lv1</span></div>
   <div class="status-item"><span class="status-label">🔮</span><span class="status-val lv-mage" id="st-lv-mage">Lv1</span></div>
@@ -389,63 +447,74 @@ body {
 </div>
 
 <div id="game">
-  <div id="main-area">
-
-    <!-- 左侧面板 -->
-    <div id="left-panel">
-      <div class="panel-box" id="synergy-panel">
-        <h3>🔗 羁绊</h3>
-        <div class="syn-row" id="syn-warrior">
-          <div class="syn-icon">⚔️</div>
-          <div class="syn-info"><div class="syn-name">战士</div><div class="syn-count" id="sc-warrior">0/2</div></div>
+  <!-- P1 Tab -->
+  <div id="p1-tab" class="game-tab active" data-player="1">
+    <div id="main-area">
+      <div id="left-panel">
+        <div class="panel-box" id="synergy-panel">
+          <h3>🔗 羁绊</h3>
+          <div class="syn-row" id="syn-warrior"><div class="syn-icon">⚔️</div><div class="syn-info"><div class="syn-name">战士</div><div class="syn-count" id="sc-warrior">0/2</div></div></div>
+          <div class="syn-row" id="syn-mage"><div class="syn-icon">🔮</div><div class="syn-info"><div class="syn-name">法师</div><div class="syn-count" id="sc-mage">0/2</div></div></div>
+          <div class="syn-row" id="syn-priest"><div class="syn-icon">✨</div><div class="syn-info"><div class="syn-name">牧师</div><div class="syn-count" id="sc-priest">0/2</div></div></div>
         </div>
-        <div class="syn-row" id="syn-mage">
-          <div class="syn-icon">🔮</div>
-          <div class="syn-info"><div class="syn-name">法师</div><div class="syn-count" id="sc-mage">0/2</div></div>
-        </div>
-        <div class="syn-row" id="syn-priest">
-          <div class="syn-icon">✨</div>
-          <div class="syn-info"><div class="syn-name">牧师</div><div class="syn-count" id="sc-priest">0/2</div></div>
-        </div>
+        <div class="panel-box" id="upgrade-panel"><h3>⬆ 升级</h3><div id="upgrade-list"></div></div>
       </div>
-
-      <div class="panel-box" id="upgrade-panel">
-        <h3>⬆ 升级</h3>
-        <div id="upgrade-list"></div>
+      <div id="battlefield-wrap">
+        <div class="zone-label enemy">⚔ 敌方阵营</div>
+        <div id="pixi-container"></div>
+        <div class="zone-label player">★ 我方阵营</div>
+      </div>
+      <div id="side-panel">
+        <div class="panel-box" id="bench-panel">
+          <h3>🎯 英雄选择</h3>
+          <div id="bench-grid"></div>
+          <div style="font-size:0.58em;color:#555;margin-top:6px;text-align:center">点击英雄 → 点击格子放置<br>最多上场5个英雄</div>
+        </div>
+        <div class="panel-box" id="log-box"><h3>📜 战斗日志</h3><div id="log-content"></div></div>
       </div>
     </div>
-
-    <!-- 战场 -->
-    <div id="battlefield-wrap">
-      <div class="zone-label enemy">⚔ 敌方阵营</div>
-      <div id="pixi-container"></div>
-      <div class="zone-label player">★ 我方阵营</div>
+    <div id="controls">
+      <div class="phase-badge" id="phase-badge">准备阶段 · 第1关</div>
+      <button class="btn primary" id="btn-start">⚔ 开始战斗</button>
+      <button class="btn" id="btn-auto">⚡ 随机布阵</button>
+      <button class="btn" id="btn-reset">↺ 重置布阵</button>
+      <span id="battle-timer"></span>
+      <span class="hint" id="hint-txt">选择英雄放置到绿色区域</span>
+      <span id="fps-counter"></span>
     </div>
-
-    <!-- 右侧面板 -->
-    <div id="side-panel">
-      <div class="panel-box" id="bench-panel">
-        <h3>🎯 英雄选择</h3>
-        <div id="bench-grid"></div>
-        <div style="font-size:0.58em;color:#555;margin-top:6px;text-align:center">点击英雄 → 点击格子放置<br>最多上场5个英雄</div>
-      </div>
-      <div class="panel-box" id="log-box">
-        <h3>📜 战斗日志</h3>
-        <div id="log-content"></div>
-      </div>
-    </div>
-
   </div>
 
-  <!-- 控制栏 -->
-  <div id="controls">
-    <div class="phase-badge" id="phase-badge">准备阶段 · 第1关</div>
-    <button class="btn primary" id="btn-start">⚔ 开始战斗</button>
-    <button class="btn" id="btn-auto">⚡ 随机布阵</button>
-    <button class="btn" id="btn-reset">↺ 重置布阵</button>
-    <span id="battle-timer"></span>
-    <span class="hint" id="hint-txt">选择英雄放置到绿色区域</span>
-    <span id="fps-counter"></span>
+  <!-- P2 Tab (AI-controlled, view-only) -->
+  <div id="p2-tab" class="game-tab" data-player="2">
+    <div id="p2-overlay" class="show">🤖 AI玩家 · 仅观战</div>
+    <div id="p2-main-area" class="p2-area" style="position:relative;">
+      <div id="p2-left-panel" class="p2-panel" style="width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
+        <div class="panel-box" id="p2-synergy-panel">
+          <h3>🔗 羁绊</h3>
+          <div class="syn-row" id="p2-syn-warrior"><div class="syn-icon">⚔️</div><div class="syn-info"><div class="syn-name">战士</div><div class="syn-count" id="p2-sc-warrior">0/2</div></div></div>
+          <div class="syn-row" id="p2-syn-mage"><div class="syn-icon">🔮</div><div class="syn-info"><div class="syn-name">法师</div><div class="syn-count" id="p2-sc-mage">0/2</div></div></div>
+          <div class="syn-row" id="p2-syn-priest"><div class="syn-icon">✨</div><div class="syn-info"><div class="syn-name">牧师</div><div class="syn-count" id="p2-sc-priest">0/2</div></div></div>
+        </div>
+        <div class="panel-box" id="p2-upgrade-panel"><h3>⬆ 升级</h3><div id="p2-upgrade-list"></div></div>
+      </div>
+      <div id="p2-battlefield-wrap" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <div class="zone-label enemy">⚔ 敌方阵营</div>
+        <div id="p2-pixi-container" style="border:2px solid var(--gold-dark);border-radius:5px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,0.8);"></div>
+        <div class="zone-label player">★ AI方阵营</div>
+      </div>
+      <div id="p2-side-panel" style="width:215px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
+        <div class="panel-box" id="p2-bench-panel">
+          <h3>🤖 AI英雄</h3>
+          <div id="p2-bench-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;"></div>
+        </div>
+        <div class="panel-box" id="p2-log-box" style="max-height:280px;overflow-y:auto;"><h3>📜 战斗日志</h3><div id="p2-log-content"></div></div>
+      </div>
+    </div>
+    <div id="p2-controls" style="display:flex;gap:12px;align-items:center;padding:6px 0 4px;flex-wrap:wrap;justify-content:center;">
+      <div class="phase-badge" id="p2-phase-badge">🤖 AI准备中 · 第1关</div>
+      <span id="p2-battle-timer"></span>
+      <span id="p2-fps-counter" style="font-size:0.65em;color:#555;font-family:monospace;"></span>
+    </div>
   </div>
 </div>
 
@@ -579,32 +648,56 @@ const ENEMY_TEMPLATES = {
 };
 
 // ============================================================
-//  关卡配置
+//  关卡配置（20关，第6关起敌方数量逐步增加到8个）
 // ============================================================
+function genPositions(count) {
+  // Generate spread-out enemy positions in rows 0-3
+  const slots = [];
+  const rows = [2,3,1,0]; // fill front rows first
+  for (let r of rows) {
+    for (let c = 0; c < COLS; c += 2) slots.push({col:c,row:r});
+    for (let c = 1; c < COLS; c += 2) slots.push({col:c,row:r});
+  }
+  return slots.slice(0, count);
+}
+
 const STAGES = [
-  { name:'先锋小队', units:['warrior','warrior','warrior','priest','priest'], enemyLv:1,
-    positions:[{col:1,row:2},{col:3,row:2},{col:5,row:2},{col:2,row:0},{col:4,row:0}],
-    dropBase:2, clearBonus:3 },
-  { name:'法师军团', units:['warrior','warrior','mage','mage','mage'], enemyLv:2,
-    positions:[{col:2,row:2},{col:4,row:2},{col:1,row:0},{col:3,row:0},{col:5,row:0}],
-    dropBase:3, clearBonus:5 },
-  { name:'平衡之力', units:['warrior','warrior','mage','mage','priest'], enemyLv:3,
-    positions:[{col:2,row:3},{col:4,row:3},{col:1,row:1},{col:5,row:1},{col:3,row:0}],
-    dropBase:4, clearBonus:8 },
-  { name:'精英卫队', units:['warrior','mage','mage','mage','priest'], enemyLv:4,
-    positions:[{col:3,row:3},{col:1,row:1},{col:3,row:1},{col:5,row:1},{col:3,row:0}],
-    dropBase:5, clearBonus:12 },
-  { name:'最终之战', units:['warrior','warrior','mage','mage','priest'], enemyLv:5,
-    positions:[{col:2,row:3},{col:4,row:3},{col:1,row:1},{col:5,row:1},{col:3,row:0}],
-    dropBase:6, clearBonus:0 },
+  // 1-5: 5 enemies, Lv1-5
+  { name:'先锋小队', units:['warrior','warrior','warrior','priest','priest'], enemyLv:1, dropBase:2, clearBonus:3 },
+  { name:'法师军团', units:['warrior','warrior','mage','mage','mage'], enemyLv:2, dropBase:3, clearBonus:5 },
+  { name:'平衡之力', units:['warrior','warrior','mage','mage','priest'], enemyLv:3, dropBase:4, clearBonus:8 },
+  { name:'精英卫队', units:['warrior','mage','mage','mage','priest'], enemyLv:4, dropBase:5, clearBonus:12 },
+  { name:'铁壁防线', units:['warrior','warrior','mage','mage','priest'], enemyLv:5, dropBase:6, clearBonus:15 },
+  // 6-10: 6 enemies, Lv6-10
+  { name:'暗影来袭', units:['warrior','warrior','mage','mage','priest','mage'], enemyLv:6, dropBase:7, clearBonus:18 },
+  { name:'钢铁洪流', units:['warrior','warrior','warrior','mage','mage','priest'], enemyLv:7, dropBase:8, clearBonus:20 },
+  { name:'魔能风暴', units:['warrior','mage','mage','mage','mage','priest'], enemyLv:8, dropBase:9, clearBonus:22 },
+  { name:'圣光审判', units:['warrior','warrior','mage','mage','priest','priest'], enemyLv:9, dropBase:10, clearBonus:25 },
+  { name:'军团之墙', units:['warrior','warrior','warrior','mage','priest','priest'], enemyLv:10, dropBase:11, clearBonus:28 },
+  // 11-15: 7 enemies, Lv11-15
+  { name:'噩梦苏醒', units:['warrior','warrior','warrior','mage','mage','priest','mage'], enemyLv:11, dropBase:12, clearBonus:30 },
+  { name:'烈焰焚天', units:['warrior','warrior','mage','mage','mage','mage','priest'], enemyLv:12, dropBase:13, clearBonus:32 },
+  { name:'冰封之地', units:['warrior','warrior','warrior','mage','mage','priest','priest'], enemyLv:13, dropBase:14, clearBonus:35 },
+  { name:'末日序曲', units:['warrior','warrior','mage','mage','mage','priest','priest'], enemyLv:14, dropBase:15, clearBonus:38 },
+  { name:'深渊之主', units:['warrior','warrior','warrior','mage','mage','mage','priest'], enemyLv:15, dropBase:16, clearBonus:40 },
+  // 16-20: 8 enemies, Lv16-20
+  { name:'永夜降临', units:['warrior','warrior','warrior','mage','mage','mage','priest','priest'], enemyLv:16, dropBase:17, clearBonus:42 },
+  { name:'天灾入侵', units:['warrior','warrior','mage','mage','mage','mage','priest','priest'], enemyLv:17, dropBase:18, clearBonus:45 },
+  { name:'诸神黄昏', units:['warrior','warrior','warrior','warrior','mage','mage','priest','priest'], enemyLv:18, dropBase:19, clearBonus:48 },
+  { name:'虚空裂隙', units:['warrior','warrior','warrior','mage','mage','mage','mage','priest'], enemyLv:19, dropBase:20, clearBonus:50 },
+  { name:'终焉之战', units:['warrior','warrior','warrior','mage','mage','mage','priest','priest'], enemyLv:20, dropBase:22, clearBonus:0 },
 ];
+// Auto-generate positions for each stage
+STAGES.forEach(s => { if (!s.positions) s.positions = genPositions(s.units.length); });
 
 // ============================================================
 //  职业等级系统
 // ============================================================
 const LEVEL_COSTS = [0, 5, 10, 18, 30]; // cost to reach Lv2,3,4,5
+const MAX_PLAYER_LEVEL = 5;
 
-const CLASS_SCALING = {
+// Base scaling for Lv1-5 (player + enemy); enemy Lv6+ generated dynamically
+const CLASS_SCALING_BASE = {
   warrior: [
     { hp:1.00, atk:1.00, armor:1.00, skill:1.0 },
     { hp:1.15, atk:1.15, armor:1.15, skill:1.2 },
@@ -627,6 +720,24 @@ const CLASS_SCALING = {
     { hp:1.60, atk:1.55, armor:1.55, skill:2.5 },
   ],
 };
+
+// Extend scaling to Lv20 for enemies (exponential growth)
+const CLASS_SCALING = {};
+Object.keys(CLASS_SCALING_BASE).forEach(cls => {
+  const base = CLASS_SCALING_BASE[cls];
+  const arr = [...base];
+  const lv5 = base[4];
+  for (let lv = 6; lv <= 20; lv++) {
+    const growth = 1 + (lv - 5) * 0.25; // each level adds 25% more
+    arr.push({
+      hp:    +(lv5.hp * growth).toFixed(2),
+      atk:   +(lv5.atk * growth).toFixed(2),
+      armor: +(lv5.armor * growth).toFixed(2),
+      skill: +(lv5.skill * growth).toFixed(2),
+    });
+  }
+  CLASS_SCALING[cls] = arr;
+});
 
 // Speed bonus multiplier
 function speedMult(seconds) {
@@ -656,9 +767,10 @@ function getScaling(cls, lv) {
   return CLASS_SCALING[cls][lv - 1];
 }
 
-function getUpgradeCost(cls) {
-  const lv = GAME.classLevels[cls];
-  if (lv >= 5) return null;
+function getUpgradeCost(cls, game) {
+  game = game || GAME;
+  const lv = game.classLevels[cls];
+  if (lv >= MAX_PLAYER_LEVEL) return null;
   return LEVEL_COSTS[lv]; // cost to go from lv → lv+1
 }
 
@@ -827,8 +939,8 @@ function createUnitGfx(u) {
   nameText.anchor.set(0.5); nameText.y = 16;
   if (nameText.width > maxNameW) nameText.scale.set(maxNameW / nameText.width);
 
-  // Level badge for enemies
-  if (u.team === 'enemy' && u.level > 1) {
+  // Level badge for enemies (always show)
+  if (u.team === 'enemy') {
     const lvBadge = new PIXI.Text(`Lv${u.level}`, { fontSize:10, fill:0xff8844, fontFamily:'Georgia, serif', fontWeight:'bold' });
     lvBadge.anchor.set(1, 0); lvBadge.x = halfW - 2; lvBadge.y = -halfH + 2;
     container.addChild(lvBadge);
@@ -1067,11 +1179,11 @@ function buildUpgradePanel() {
 
     const info = document.createElement('div');
     info.className = 'upgrade-info';
-    info.innerHTML = `<div class="upgrade-cls">${icons[cls]} ${clsLabel(cls)}</div><div class="upgrade-lv">Lv${lv}${lv<5?' → Lv'+(lv+1):' MAX'}</div>`;
+    info.innerHTML = `<div class="upgrade-cls">${icons[cls]} ${clsLabel(cls)}</div><div class="upgrade-lv">Lv${lv}${lv<MAX_PLAYER_LEVEL?' → Lv'+(lv+1):' MAX'}</div>`;
 
     const btn = document.createElement('button');
-    btn.className = 'upgrade-btn' + (lv >= 5 ? ' maxed' : '');
-    if (lv >= 5) {
+    btn.className = 'upgrade-btn' + (lv >= MAX_PLAYER_LEVEL ? ' maxed' : '');
+    if (lv >= MAX_PLAYER_LEVEL) {
       btn.textContent = 'MAX';
       btn.disabled = true;
     } else {
@@ -1120,7 +1232,7 @@ function upgradeClass(cls) {
 }
 
 function updateStatusBar() {
-  document.getElementById('st-stage').textContent = `第${GAME.stage+1}关 / 5`;
+  document.getElementById('st-stage').textContent = `第${GAME.stage+1}关 / ${STAGES.length}`;
   document.getElementById('st-gold').textContent = GAME.gold;
   document.getElementById('st-lv-warrior').textContent = `Lv${GAME.classLevels.warrior}`;
   document.getElementById('st-lv-mage').textContent = `Lv${GAME.classLevels.mage}`;
@@ -1534,18 +1646,20 @@ function endBattle(winner) {
       if (isLastStage) {
         txt.textContent = '🏆 通关！';
         txt.style.color = '#ffd700';
-        sub.textContent = '恭喜你通过了所有关卡！';
+        sub.textContent = `恭喜你通过了所有${STAGES.length}关！AI当前在第${GAME2.stage+1}关`;
       } else {
         txt.textContent = `✅ 第${GAME.stage+1}关 通关`;
         txt.style.color = '#44cc66';
         sub.textContent = stage.name;
       }
 
+      const p2Info = p2Finished ? '🤖 AI: 已通关' : `🤖 AI: 第${GAME2.stage+1}关`;
       details.innerHTML = `
-        击杀: ${G.killCount}/5 | 用时: ${secs}秒 | ${sl}<br>
+        击杀: ${G.killCount}/${stage.units.length} | 用时: ${secs}秒 | ${sl}<br>
         速度倍率: ×${sm} | 击杀金币: ${G.goldEarned - clearGold}<br>
         <span class="gold-line">通关奖励: +${clearGold} | 本关总计: +${G.goldEarned} 💰</span><br>
-        当前金币: ${GAME.gold}
+        当前金币: ${GAME.gold}<br>
+        ${p2Info}
       `;
 
       btns.innerHTML = '';
@@ -1584,7 +1698,8 @@ function endBattle(winner) {
       txt.textContent = '💀 战斗失败';
       txt.style.color = '#cc4444';
       sub.textContent = `第${GAME.stage+1}关 · ${stage.name}`;
-      details.innerHTML = `击杀: ${G.killCount}/5 | 已获金币: +${G.goldEarned}<br>当前金币: ${GAME.gold}`;
+      const p2Info2 = p2Finished ? '🤖 AI: 已通关' : `🤖 AI: 第${GAME2.stage+1}关`;
+      details.innerHTML = `击杀: ${G.killCount}/${stage.units.length} | 已获金币: +${G.goldEarned}<br>当前金币: ${GAME.gold}<br>${p2Info2}`;
 
       btns.innerHTML = '';
       const b1 = document.createElement('button');
@@ -1740,7 +1855,783 @@ function init() {
   addLog('击杀敌人获取金币，金币可升级职业。', 'sys');
 }
 
-preloadTextures().then(() => init()).catch(() => init());
+// ============================================================
+//  PLAYER 2 (AI-controlled) — separate pixi app + state
+// ============================================================
+const app2 = new PIXI.Application({
+  width: BF_W, height: BF_H,
+  backgroundColor: CLR.bg, antialias: true,
+  resolution: window.devicePixelRatio || 1, autoDensity: true,
+});
+document.getElementById('p2-pixi-container').appendChild(app2.view);
+
+const gridLayer2   = new PIXI.Container();
+const unitLayer2   = new PIXI.Container();
+const effectLayer2 = new PIXI.Container();
+const textLayer2   = new PIXI.Container();
+app2.stage.addChild(gridLayer2, unitLayer2, effectLayer2, textLayer2);
+
+const tweens2 = [];
+const particles2 = [];
+
+let GAME2 = {
+  stage: 0, gold: 0,
+  classLevels: { warrior:1, mage:1, priest:1 },
+  playerLayout: [],
+};
+let G2 = newState();
+
+// Active tab (1 or 2)
+let activeTab = 1;
+
+function switchTab(n) {
+  activeTab = n;
+  document.getElementById('p1-tab').classList.toggle('active', n === 1);
+  document.getElementById('p2-tab').classList.toggle('active', n === 2);
+  document.getElementById('tab-p1').classList.toggle('active', n === 1);
+  document.getElementById('tab-p2').classList.toggle('active', n === 2);
+
+  // Update status bar to reflect active player
+  if (n === 1) updateStatusBar();
+  else updateStatusBar2();
+}
+
+function updateTabInfo() {
+  const p1Phase = G.phase === 'battle' ? '战斗中' : G.phase === 'result' ? '结算中' : '准备中';
+  const p2Phase = G2.phase === 'battle' ? '战斗中' : G2.phase === 'result' ? '结算中' : '准备中';
+  document.getElementById('tab-p1-stage').textContent = `第${GAME.stage+1}关`;
+  document.getElementById('tab-p2-stage').textContent = `第${GAME2.stage+1}关`;
+  document.getElementById('tab-p1-status').textContent = p1Phase;
+  document.getElementById('tab-p2-status').textContent = p2Phase;
+}
+
+// ---- P2 Grid ----
+function drawGrid2() {
+  gridLayer2.removeChildren();
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const isEnemy = ENEMY_ROWS.includes(r);
+      const g = new PIXI.Graphics();
+      g.beginFill(isEnemy ? CLR.ezone : CLR.pzone, 0.3);
+      g.drawRect(c*CS, r*CS, CS, CS); g.endFill();
+      g.lineStyle(1, CLR.gridLine, 0.4);
+      g.drawRect(c*CS, r*CS, CS, CS);
+      gridLayer2.addChild(g);
+    }
+  }
+  const divider = new PIXI.Graphics();
+  divider.lineStyle(2, CLR.gold, 0.5);
+  divider.moveTo(0, ROWS/2*CS); divider.lineTo(BF_W, ROWS/2*CS);
+  gridLayer2.addChild(divider);
+}
+
+// ---- P2 Unit GFX (reuses same logic) ----
+function createUnitGfx2(u) {
+  const container = new PIXI.Container();
+  const {x, y} = cellCenter(u.col, u.row);
+  container.x = x; container.y = y;
+
+  const clrMap = { warrior: CLR.warrior, mage: CLR.mage, priest: CLR.priest };
+  const unitColor = clrMap[u.cls] || CLR.gold;
+  const halfW = (CS-14)/2, halfH = (CS-14)/2;
+
+  const body = new PIXI.Graphics();
+  body.beginFill(0x111111, 0.9);
+  body.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6); body.endFill();
+  body.lineStyle(2.5, unitColor, u.team==='enemy' ? 0.7 : 1);
+  body.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6);
+
+  const glow = new PIXI.Graphics();
+  glow.beginFill(unitColor, 0.08);
+  glow.drawRoundedRect(-halfW+2, -halfH+2, halfW*2-4, halfH*2-4, 4); glow.endFill();
+
+  let portrait;
+  if (u.isGeneric) {
+    const clsName = {warrior:'战士', mage:'法师', priest:'牧师'}[u.cls] || u.cls;
+    portrait = new PIXI.Text(clsName, { fontSize: 22, fill: unitColor, fontFamily:'Georgia, serif', fontWeight:'bold', align:'center' });
+    portrait.anchor.set(0.5); portrait.y = -10;
+  } else {
+    const tex = TEXTURES[u.charId];
+    if (tex) {
+      portrait = new PIXI.Sprite(tex);
+      portrait.width = 42; portrait.height = 42;
+      portrait.anchor.set(0.5); portrait.y = -18;
+    } else {
+      portrait = new PIXI.Text(u.emoji, { fontSize: 30, align:'center' });
+      portrait.anchor.set(0.5); portrait.y = -6;
+    }
+  }
+
+  const maxNameW = halfW*2-6;
+  const displayName = u.isGeneric ? u.ab.name : u.name;
+  const nameText = new PIXI.Text(displayName, { fontSize:12, fill:0xf0d080, fontFamily:'Georgia, serif', align:'center' });
+  nameText.anchor.set(0.5); nameText.y = 16;
+  if (nameText.width > maxNameW) nameText.scale.set(maxNameW / nameText.width);
+
+  if (u.team === 'enemy') {
+    const lvBadge = new PIXI.Text(`Lv${u.level}`, { fontSize:10, fill:0xff8844, fontFamily:'Georgia, serif', fontWeight:'bold' });
+    lvBadge.anchor.set(1, 0); lvBadge.x = halfW - 2; lvBadge.y = -halfH + 2;
+    container.addChild(lvBadge);
+  }
+
+  const barW = halfW*2-8;
+  const hpBg = new PIXI.Graphics();
+  hpBg.beginFill(CLR.barBg); hpBg.drawRoundedRect(-barW/2, halfH-14, barW, 6, 2); hpBg.endFill();
+  const hpBar = new PIXI.Graphics();
+  drawHpBar(hpBar, barW, u.hp/u.maxHp);
+  hpBar.x = -barW/2; hpBar.y = halfH-14;
+
+  const mnBg = new PIXI.Graphics();
+  mnBg.beginFill(CLR.barBg); mnBg.drawRoundedRect(-barW/2, halfH-7, barW, 4, 1); mnBg.endFill();
+  const mnBar = new PIXI.Graphics();
+  drawMnBar(mnBar, barW, u.mana/u.maxMana);
+  mnBar.x = -barW/2; mnBar.y = halfH-7;
+
+  container.addChild(body, glow, portrait, nameText, hpBg, hpBar, mnBg, mnBar);
+
+  if (u.team === 'enemy') {
+    const overlay = new PIXI.Graphics();
+    overlay.beginFill(0x4444aa, 0.12);
+    overlay.drawRoundedRect(-halfW, -halfH, halfW*2, halfH*2, 6); overlay.endFill();
+    container.addChild(overlay);
+  }
+
+  container.sortableChildren = true;
+  unitLayer2.addChild(container);
+  u.gfx = container;
+  u.gfxParts = { body, portrait, nameText, hpBar, mnBar, barW, halfW, halfH };
+}
+
+// ---- P2 effects (use layer2) ----
+function showDmgText2(u, val, type) {
+  if (!u.gfx) return;
+  const colors = { phys:0xffcc22, magic:0x88bbff, heal:0x44ee66, info:0xffdd88, gold:0xffd700 };
+  const color = colors[type] || 0xffffff;
+  const txt = new PIXI.Text(typeof val === 'number' ? `-${val}` : val, {
+    fontSize: type==='gold' ? 14 : 15, fontFamily:'Georgia, serif', fontWeight:'bold',
+    fill: color, stroke: 0x000000, strokeThickness: 3,
+  });
+  txt.anchor.set(0.5);
+  txt.x = u.gfx.x + (Math.random()-0.5)*20;
+  txt.y = u.gfx.y - 10;
+  textLayer2.addChild(txt);
+  tween2(txt, { y: txt.y - 55, alpha: 0 }, 1.0, 'easeOut', () => txt.destroy());
+}
+
+function showSpellFx2(u, emoji, color) {
+  if (!u.gfx) return;
+  const fx = new PIXI.Text(emoji, { fontSize: 36 });
+  fx.anchor.set(0.5); fx.x = u.gfx.x; fx.y = u.gfx.y - 5; fx.scale.set(0.5);
+  effectLayer2.addChild(fx);
+  tween2(fx, { y: fx.y-20 }, 0.15, 'easeOut', () => {
+    tween2(fx, { alpha: 0 }, 0.5, 'easeOut', () => fx.destroy());
+  });
+  tween2(fx.scale, { x:1.6, y:1.6 }, 0.6, 'elastic');
+  spawnParticles2(u.gfx.x, u.gfx.y, color||CLR.gold, 12, { spread:80, life:0.5 });
+}
+
+function spawnParticles2(x, y, color, count, opts = {}) {
+  for (let i = 0; i < count; i++) {
+    const g = new PIXI.Graphics();
+    const size = opts.size || (2 + Math.random()*3);
+    g.beginFill(color, 0.9); g.drawCircle(0,0,size); g.endFill();
+    g.x = x; g.y = y;
+    effectLayer2.addChild(g);
+    particles2.push({
+      gfx:g, vx:(Math.random()-0.5)*(opts.spread||120), vy:(Math.random()-0.5)*(opts.spread||120)-(opts.upward||0),
+      life:0, maxLife:(opts.life||0.6)+Math.random()*0.3, gravity:opts.gravity||80, shrink:opts.shrink!==false, startSize:size,
+    });
+  }
+}
+
+function tween2(obj, props, duration, easing = 'easeOut', onDone = null) {
+  const start = {};
+  for (const k in props) start[k] = obj[k];
+  tweens2.push({ obj, start, end: props, dur: duration, elapsed: 0, easing, onDone });
+}
+
+function updateTweens2(dt) {
+  for (let i = tweens2.length-1; i >= 0; i--) {
+    const tw = tweens2[i];
+    tw.elapsed += dt;
+    const t = Math.min(1, tw.elapsed / tw.dur);
+    const e = easeFn(tw.easing, t);
+    for (const k in tw.end) tw.obj[k] = tw.start[k] + (tw.end[k] - tw.start[k]) * e;
+    if (t >= 1) { tweens2.splice(i, 1); if (tw.onDone) tw.onDone(); }
+  }
+}
+
+function updateParticles2(dt) {
+  for (let i = particles2.length-1; i >= 0; i--) {
+    const p = particles2[i];
+    p.life += dt; p.gfx.x += p.vx*dt; p.gfx.y += p.vy*dt; p.vy += p.gravity*dt;
+    const t = p.life/p.maxLife;
+    p.gfx.alpha = Math.max(0,1-t);
+    if (p.shrink) p.gfx.scale.set(1-t*0.8);
+    if (p.life >= p.maxLife) { p.gfx.destroy(); particles2.splice(i,1); }
+  }
+}
+
+function addShieldGfx2(u) {
+  if (u._shieldGfx) { u._shieldGfx.destroy(); u._shieldGfx = null; }
+  const ring = new PIXI.Graphics();
+  const hw = u.gfxParts.halfW+4, hh = u.gfxParts.halfH+4;
+  ring.lineStyle(3, 0xddddff, 0.85);
+  ring.drawRoundedRect(-hw, -hh, hw*2, hh*2, 8);
+  u.gfx.addChild(ring); u._shieldGfx = ring; u._shieldPulse = 0;
+}
+function removeShieldGfx2(u) { if (u._shieldGfx) { u._shieldGfx.destroy(); u._shieldGfx = null; } }
+
+function animAttack2(u, tgt) {
+  if (!u.gfx || !tgt.gfx) return;
+  const ox = u.gfx.x, oy = u.gfx.y;
+  const dx = tgt.gfx.x-u.gfx.x, dy = tgt.gfx.y-u.gfx.y;
+  const dist = Math.sqrt(dx*dx+dy*dy)||1;
+  tween2(u.gfx, { x:ox+(dx/dist)*15, y:oy+(dy/dist)*15 }, 0.08, 'easeOut', () => {
+    tween2(u.gfx, { x:ox, y:oy }, 0.12, 'easeOut');
+  });
+}
+function animHit2(u) {
+  if (!u.gfxParts) return;
+  u.gfxParts.body.tint = 0xff4444;
+  setTimeout(() => { if (u.gfxParts?.body && !u.gfxParts.body.destroyed) u.gfxParts.body.tint = 0xffffff; }, 120);
+}
+function animCast2(u) {
+  if (!u.gfx) return;
+  const g = new PIXI.Graphics();
+  const hw = u.gfxParts.halfW+6, hh = u.gfxParts.halfH+6;
+  g.beginFill(0xffee55, 0.3); g.drawRoundedRect(-hw,-hh,hw*2,hh*2,10); g.endFill();
+  u.gfx.addChild(g);
+  tween2(g, {alpha:0}, 0.6, 'easeOut', () => g.destroy());
+  const clrMap = {warrior:0xff6644, mage:0x66aaff, priest:0xffee44};
+  spawnParticles2(u.gfx.x, u.gfx.y, clrMap[u.cls]||CLR.gold, 8, {spread:60, upward:40, life:0.4});
+}
+function animDeath2(u) {
+  if (!u.gfx) return;
+  spawnParticles2(u.gfx.x, u.gfx.y, CLR.warrior, 20, {spread:100, life:0.8, gravity:120});
+  tween2(u.gfx, {alpha:0}, 0.4, 'easeIn');
+  tween2(u.gfx.scale, {x:0.3,y:0.3}, 0.4, 'easeIn', () => { u.gfx.destroy(); u.gfx=null; u.gfxParts=null; });
+}
+
+// ---- P2 Status Bar ----
+function updateStatusBar2() {
+  document.getElementById('st-stage').textContent = `第${GAME2.stage+1}关 / ${STAGES.length}`;
+  document.getElementById('st-gold').textContent = GAME2.gold;
+  document.getElementById('st-lv-warrior').textContent = `Lv${GAME2.classLevels.warrior}`;
+  document.getElementById('st-lv-mage').textContent = `Lv${GAME2.classLevels.mage}`;
+  document.getElementById('st-lv-priest').textContent = `Lv${GAME2.classLevels.priest}`;
+}
+
+function addLog2(txt, type='') {
+  const box = document.getElementById('p2-log-content');
+  const el = document.createElement('div');
+  el.className = `log-e ${type}`;
+  el.textContent = txt;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  while (box.children.length > 120) box.removeChild(box.firstChild);
+}
+
+// ---- P2 Synergy Panel ----
+function updateSynPanel2() {
+  const pu = G2.units.filter(u => u.team === 'player');
+  const cnt = {warrior:0, mage:0, priest:0};
+  pu.forEach(u => { cnt[u.cls]++; });
+  G2.synCounts = cnt;
+  ['warrior','mage','priest'].forEach(cls => {
+    const c = cnt[cls];
+    const syn = SYNERGIES[cls];
+    const next = syn.thresholds.find(t => c < t) || syn.thresholds[syn.thresholds.length-1];
+    const el = document.getElementById(`p2-sc-${cls}`);
+    if (el) el.textContent = `${c}/${next}`;
+    const row = document.getElementById(`p2-syn-${cls}`);
+    if (row) { if (c >= syn.thresholds[0]) row.classList.add('active'); else row.classList.remove('active'); }
+  });
+}
+
+function buildUpgradePanel2() {
+  const list = document.getElementById('p2-upgrade-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const icons = { warrior:'⚔️', mage:'🔮', priest:'✨' };
+  ['warrior','mage','priest'].forEach(cls => {
+    const lv = GAME2.classLevels[cls];
+    const row = document.createElement('div');
+    row.className = 'upgrade-row';
+    const info = document.createElement('div');
+    info.className = 'upgrade-info';
+    info.innerHTML = `<div class="upgrade-cls">${icons[cls]} ${clsLabel(cls)}</div><div class="upgrade-lv">Lv${lv}${lv<MAX_PLAYER_LEVEL?' → Lv'+(lv+1):' MAX'}</div>`;
+    row.appendChild(info);
+    list.appendChild(row);
+  });
+}
+
+function buildBench2() {
+  const grid = document.getElementById('p2-bench-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const placed = G2.units.filter(u => u.team === 'player').map(u => u.charId);
+  Object.values(CHARS).forEach(ch => {
+    const card = document.createElement('div');
+    card.className = `bench-card ${ch.cls}${placed.includes(ch.id) ? ' placed' : ''}`;
+    const lv = GAME2.classLevels[ch.cls];
+    card.innerHTML = `<div class="bc-emoji">${ch.emoji}</div><div class="bc-name">${ch.name}</div><div class="bc-class">${clsLabel(ch.cls)} Lv${lv}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ---- P2 Spawn/Remove ----
+function spawnUnit2(u) { G2.units.push(u); createUnitGfx2(u); }
+function removeUnit2(u) {
+  G2.units = G2.units.filter(x => x.uid !== u.uid);
+  if (u.gfx) { u.gfx.destroy(); u.gfx=null; u.gfxParts=null; }
+}
+
+function makeUnit2(ch, col, row, team, level) {
+  level = level || 1;
+  const sc = getScaling(ch.cls, level);
+  const synBonus = team === 'player' ? calcSynBonus2(ch.cls) : {};
+  const extraHp = synBonus.hp || 0;
+  const scaledHp    = Math.round(ch.baseHp * sc.hp) + extraHp;
+  const scaledAtk   = Math.round(ch.atk * sc.atk);
+  const scaledArmor = Math.round(ch.armor * sc.armor) + (synBonus.armor || 0);
+  const ab = { ...ch.ab };
+  if (ab.dmg)     ab.dmg     = Math.round(ab.dmg * sc.skill);
+  if (ab.amt)     ab.amt     = Math.round(ab.amt * sc.skill);
+  if (ab.mult)    ab.mult    = +(ab.mult * sc.skill).toFixed(2);
+  if (ab.buffAmt) ab.buffAmt = +(ab.buffAmt * sc.skill).toFixed(2);
+  if (ab.count)   ab.count   = Math.round(ab.count * sc.skill);
+  if (ab.dur)     ab.dur     = Math.round(ab.dur * Math.min(sc.skill, 1.5));
+  return {
+    uid: G2.uid++, charId: ch.id, name: ch.name, cls: ch.cls, emoji: ch.emoji,
+    team, col, row, level,
+    maxHp: scaledHp, hp: scaledHp,
+    atk: scaledAtk, atkMs: ch.atkMs, range: ch.range, armor: scaledArmor,
+    mana: 0, maxMana: ab.cost, ab,
+    lastAtk: 0, lastAb: 0, stunUntil: 0,
+    shielded: false, shieldEnd: 0, atkMult: 1.0, buffEnd: 0,
+    gfx: null, gfxParts: null,
+  };
+}
+
+function calcSynBonus2(cls) {
+  const cnt = G2.synCounts[cls] || 0;
+  const syn = SYNERGIES[cls];
+  let bonus = {};
+  syn.thresholds.forEach(t => { if (cnt >= t) bonus = {...bonus, ...syn.bonuses[t]}; });
+  return bonus;
+}
+
+function activeSyn2(team) {
+  const pu = G2.units.filter(u => u.team === team && u.hp > 0);
+  const cnt = {warrior:0, mage:0, priest:0};
+  pu.forEach(u => { cnt[u.cls]++; });
+  const result = {};
+  Object.keys(cnt).forEach(cls => {
+    const syn = SYNERGIES[cls];
+    syn.thresholds.forEach(t => { if (cnt[cls] >= t) result[cls] = syn.bonuses[t]; });
+  });
+  return result;
+}
+function spellPower2(team) {
+  const s = activeSyn2(team);
+  return s.mage ? (s.mage.sp||0) : 0;
+}
+
+// ---- P2 Place Enemies ----
+function placeEnemies2() {
+  const stage = STAGES[GAME2.stage];
+  stage.units.forEach((clsType, i) => {
+    const ch = ENEMY_TEMPLATES[clsType];
+    const pos = stage.positions[i];
+    const u = makeUnit2(ch, pos.col, pos.row, 'enemy', stage.enemyLv);
+    u.isGeneric = true;
+    spawnUnit2(u);
+  });
+}
+
+// ---- P2 Battle Logic ----
+function doAtk2(u, tgt, now) {
+  u.lastAtk = now;
+  let dmg = Math.round(u.atk * u.atkMult - tgt.armor * 0.45);
+  dmg = Math.max(1, dmg);
+  animAttack2(u, tgt);
+  if (tgt.shielded) {
+    tgt.shielded = false; removeShieldGfx2(tgt);
+    showDmgText2(tgt, '格挡!', 'info');
+  } else {
+    applyDmg2(tgt, dmg, 'phys');
+    animHit2(tgt);
+  }
+  u.mana = Math.min(u.maxMana, u.mana + 15);
+  tgt.mana = Math.min(tgt.maxMana, tgt.mana + 8);
+  refreshUnitBars(u); refreshUnitBars(tgt);
+}
+
+function castAbility2(u, tgt, foes, mates, now) {
+  u.mana = 0; u.lastAb = now;
+  animCast2(u);
+  addLog2(`✦ ${u.name} 释放【${u.ab.name}】`, 'ability');
+  const sp = spellPower2(u.team);
+  switch (u.ab.type) {
+    case 'block':
+      u.blockReduction = u.ab.reduction; u.blockEnd = now + u.ab.dur;
+      showDmgText2(u, '格挡！', 'heal'); addShieldGfx2(u); break;
+    case 'enemy_aoe': {
+      const living = foes.filter(f => f.hp > 0);
+      const targets = living.sort(() => Math.random()-0.5).slice(0, u.ab.targets || 3);
+      targets.forEach(f => { applyDmg2(f, Math.round(u.ab.dmg*(1+sp)), 'magic'); showSpellFx2(f,'💥',0x8844ff); animHit2(f); });
+      break;
+    }
+    case 'buff':
+      mates.filter(m => m.hp > 0 && chebyshev(u,m) <= u.ab.radius).forEach(m => {
+        m.atkMult = 1 + u.ab.buffAmt; m.buffEnd = now + u.ab.dur;
+        showDmgText2(m, `+${Math.round(u.ab.buffAmt*100)}%ATK`, 'heal');
+      }); break;
+    case 'physical':
+      if (tgt.hp > 0) { applyDmg2(tgt, Math.round(u.atk*u.ab.mult), 'phys'); showSpellFx2(tgt,'💥',0xff4422); animHit2(tgt); } break;
+    case 'shield':
+      u.shielded = true; u.shieldEnd = now + u.ab.dur;
+      addShieldGfx2(u); showDmgText2(u, '神盾！', 'heal'); break;
+    case 'aoe':
+      foes.filter(f => f.hp > 0).forEach(f => { applyDmg2(f, Math.round(u.ab.dmg*(1+sp)), 'magic'); showSpellFx2(f,'❄️',0x88ccff); animHit2(f); }); break;
+    case 'missiles':
+      for (let i = 0; i < u.ab.count; i++) {
+        const living = foes.filter(f => f.hp > 0); if (!living.length) break;
+        const r = living[Math.floor(Math.random()*living.length)];
+        const d = Math.round(u.ab.dmg*(1+sp));
+        setTimeout(() => { if (r.hp > 0) { applyDmg2(r,d,'magic'); showSpellFx2(r,'🔮',0xaa66ff); animHit2(r); } }, i*140);
+      } break;
+    case 'magic':
+      if (tgt.hp > 0) { applyDmg2(tgt, Math.round(u.ab.dmg*(1+sp)), 'magic'); showSpellFx2(tgt,'🔥',0xff6622); animHit2(tgt); } break;
+    case 'heal': {
+      const lowest = mates.filter(m => m.hp > 0).sort((a,b) => a.hp/a.maxHp - b.hp/b.maxHp)[0];
+      if (lowest) {
+        const h = Math.min(u.ab.amt, lowest.maxHp - lowest.hp);
+        lowest.hp += h; showDmgText2(lowest, `+${h}`, 'heal'); showSpellFx2(lowest,'✨',0x44ee66); refreshUnitBars(lowest);
+      } break;
+    }
+    case 'stun':
+      if (tgt.hp > 0) { applyDmg2(tgt, Math.round(u.ab.dmg*(1+sp)), 'magic'); tgt.stunUntil = now + u.ab.stunMs; showSpellFx2(tgt,'🌙',0xaaaaff); animHit2(tgt); } break;
+    case 'mass_heal':
+      mates.filter(m => m.hp > 0).forEach(m => {
+        const h = Math.min(u.ab.amt, m.maxHp - m.hp);
+        m.hp += h; showDmgText2(m, `+${h}`, 'heal'); refreshUnitBars(m);
+      }); break;
+  }
+  refreshUnitBars(u);
+}
+
+function applyDmg2(u, dmg, type) {
+  if (u.hp <= 0) return;
+  if (u.blockReduction && u.blockEnd && Date.now() < u.blockEnd) {
+    dmg = Math.round(dmg * (1 - u.blockReduction));
+  }
+  u.hp = Math.max(0, u.hp - dmg);
+  showDmgText2(u, dmg, type);
+  refreshUnitBars(u);
+  if (u.hp <= 0) killUnit2(u);
+}
+
+function killUnit2(u) {
+  addLog2(`${u.name} 阵亡！`, 'death');
+  animDeath2(u);
+  if (u.team === 'enemy') {
+    G2.killCount++;
+    const stage = STAGES[GAME2.stage];
+    const mult = speedMult(G2.battleElapsed);
+    const goldGain = Math.round(stage.dropBase * mult);
+    G2.goldEarned += goldGain;
+    GAME2.gold += goldGain;
+    addLog2(`击杀 ${u.name} 获得 ${goldGain} 金币`, 'gold');
+  }
+}
+
+function priestHeal2() {
+  ['player','enemy'].forEach(team => {
+    const s = activeSyn2(team);
+    if (!s.priest) return;
+    const hpt = s.priest.hpt;
+    G2.units.filter(u => u.team === team && u.hp > 0).forEach(u => {
+      const h = Math.min(hpt, u.maxHp - u.hp);
+      if (h > 0) { u.hp += h; showDmgText2(u, `+${h}`, 'heal'); refreshUnitBars(u); }
+    });
+  });
+}
+
+function moveStep2(u, tgt) {
+  const dx = tgt.col-u.col, dy = tgt.row-u.row;
+  let nc = u.col, nr = u.row;
+  if (Math.abs(dx) >= Math.abs(dy)) nc += Math.sign(dx);
+  else nr += Math.sign(dy);
+  const blocked = G2.units.find(x => x.hp > 0 && x.uid !== u.uid && x.col === nc && x.row === nr);
+  if (!blocked && nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) { u.col = nc; u.row = nr; }
+}
+
+function battleUpdate2(dt) {
+  if (G2.phase !== 'battle') return;
+  G2.battleElapsed += dt;
+  const seconds = Math.floor(G2.battleElapsed);
+  const ms = Math.floor((G2.battleElapsed % 1) * 10);
+  document.getElementById('p2-battle-timer').textContent = `⏱ ${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}.${ms}`;
+
+  const now = Date.now();
+  const alive = G2.units.filter(u => u.hp > 0);
+  const pa = alive.filter(u => u.team === 'player');
+  const ea = alive.filter(u => u.team === 'enemy');
+
+  if (!pa.length || !ea.length) { endBattle2(pa.length ? 'player' : 'enemy'); return; }
+
+  G2.healTimer += dt;
+  if (G2.healTimer >= 3.0) { G2.healTimer -= 3.0; priestHeal2(); }
+
+  alive.forEach(u => {
+    if (u.stunUntil > now) return;
+    if (u.shielded && u.shieldEnd < now) { u.shielded = false; removeShieldGfx2(u); }
+    if (u.buffEnd < now && u.atkMult > 1) u.atkMult = 1.0;
+    const foes = u.team === 'player' ? ea : pa;
+    const mates = u.team === 'player' ? pa : ea;
+    if (!foes.length) return;
+    const tgt = nearest(u, foes);
+    const dist = chebyshev(u, tgt);
+    if (u.mana >= u.maxMana && now - u.lastAb > 800) { castAbility2(u, tgt, foes, mates, now); return; }
+    if (dist <= u.range) { if (now - u.lastAtk >= u.atkMs) doAtk2(u, tgt, now); }
+    else { G2.tick++; if (G2.tick % 3 === 0) moveStep2(u, tgt); }
+  });
+
+  alive.forEach(u => {
+    if (!u.gfx) return;
+    const target = cellCenter(u.col, u.row);
+    u.gfx.x += (target.x - u.gfx.x) * Math.min(1, dt*8);
+    u.gfx.y += (target.y - u.gfx.y) * Math.min(1, dt*8);
+    if (u._shieldGfx && !u._shieldGfx.destroyed) {
+      u._shieldPulse = (u._shieldPulse||0) + dt*4;
+      u._shieldGfx.alpha = 0.6 + Math.sin(u._shieldPulse)*0.3;
+    }
+  });
+}
+
+// ---- P2 End Battle ----
+function endBattle2(winner) {
+  G2.phase = 'result';
+  document.getElementById('p2-battle-timer').textContent = '';
+  const stage = STAGES[GAME2.stage];
+  const elapsed = G2.battleElapsed;
+
+  if (winner === 'player') {
+    const clearGold = stage.clearBonus;
+    GAME2.gold += clearGold;
+    G2.goldEarned += clearGold;
+    addLog2(`━━━ 第${GAME2.stage+1}关 通关！━━━`, 'sys');
+
+    const isLastStage = GAME2.stage >= STAGES.length - 1;
+    if (isLastStage) {
+      addLog2('🏆 AI已通关所有关卡！', 'sys');
+      p2Finished = true;
+      checkCompetitionEnd();
+    } else {
+      // AI auto-advance
+      setTimeout(() => {
+        GAME2.stage++;
+        setupStage2();
+        // AI plays next stage after brief delay
+        setTimeout(() => aiStartBattle(), 1500 + Math.random()*1000);
+      }, 1500);
+    }
+  } else {
+    addLog2(`━━━ 第${GAME2.stage+1}关 失败 ━━━`, 'sys');
+    // AI retries
+    setTimeout(() => {
+      setupStage2();
+      setTimeout(() => aiStartBattle(), 1500 + Math.random()*1000);
+    }, 2000);
+  }
+  updateTabInfo();
+}
+
+// ---- P2 Setup Stage ----
+function setupStage2() {
+  G2.units.forEach(u => { if (u.gfx) { u.gfx.destroy(); u.gfx = null; } });
+  unitLayer2.removeChildren(); effectLayer2.removeChildren(); textLayer2.removeChildren();
+  tweens2.length = 0; particles2.length = 0;
+
+  G2 = newState();
+  document.getElementById('p2-phase-badge').textContent = `🤖 AI准备中 · 第${GAME2.stage+1}关`;
+  document.getElementById('p2-battle-timer').textContent = '';
+  document.getElementById('p2-log-content').innerHTML = '';
+
+  drawGrid2();
+  buildUpgradePanel2();
+  placeEnemies2();
+
+  // AI decides upgrades
+  aiUpgrade();
+
+  // AI places units
+  aiPlaceUnits();
+
+  buildBench2();
+  updateSynPanel2();
+  if (activeTab === 2) updateStatusBar2();
+  updateTabInfo();
+
+  addLog2(`═══ 第${GAME2.stage+1}关：${STAGES[GAME2.stage].name} ═══`, 'sys');
+  addLog2(`敌方等级 Lv${STAGES[GAME2.stage].enemyLv}`, 'sys');
+}
+
+// ---- AI Logic: Upgrade ----
+function aiUpgrade() {
+  // Simple strategy: prioritize the class with most units in current layout, then spread
+  // Try to upgrade until can't afford
+  const priority = ['mage','warrior','priest']; // AI favors damage
+  let upgraded = true;
+  while (upgraded) {
+    upgraded = false;
+    for (const cls of priority) {
+      const cost = getUpgradeCost(cls, GAME2);
+      if (cost && GAME2.gold >= cost) {
+        GAME2.gold -= cost;
+        GAME2.classLevels[cls]++;
+        addLog2(`升级 ${clsLabel(cls)} → Lv${GAME2.classLevels[cls]}`, 'sys');
+        upgraded = true;
+        break; // re-evaluate priority
+      }
+    }
+  }
+}
+
+// ---- AI Logic: Place Units ----
+function aiPlaceUnits() {
+  // Pick 5 heroes with a reasonable composition
+  const allHeroes = Object.values(CHARS);
+  // AI strategy: 2 warriors + 2 mages + 1 priest, or adjust based on level
+  let picks;
+  const stage = GAME2.stage;
+  if (stage < 5) {
+    picks = ['bolvar','garrosh','jaina','antonidas','anduin'];
+  } else if (stage < 10) {
+    picks = ['bolvar','varian','jaina','khadgar','velen'];
+  } else {
+    picks = ['garrosh','bolvar','jaina','antonidas','velen'];
+  }
+
+  const slots = [{col:1,row:7},{col:3,row:7},{col:5,row:7},{col:2,row:6},{col:4,row:6}];
+  picks.forEach((id, i) => {
+    const ch = CHARS[id];
+    if (!ch) return;
+    const lv = GAME2.classLevels[ch.cls];
+    const u = makeUnit2(ch, slots[i].col, slots[i].row, 'player', lv);
+    spawnUnit2(u);
+  });
+  GAME2.playerLayout = picks.map((id, i) => ({ charId: id, col: slots[i].col, row: slots[i].row }));
+  updateSynPanel2();
+}
+
+// ---- AI Start Battle ----
+function aiStartBattle() {
+  if (p2Finished) return;
+  const pu = G2.units.filter(u => u.team === 'player');
+  if (!pu.length) return;
+
+  G2.phase = 'battle';
+  G2.healTimer = 0;
+  G2.battleStartTime = Date.now();
+  G2.battleElapsed = 0;
+  G2.killCount = 0;
+  G2.goldEarned = 0;
+
+  document.getElementById('p2-phase-badge').textContent = `⚔ AI战斗中 �� 第${GAME2.stage+1}关`;
+
+  // Apply warrior synergy
+  const ps = activeSyn2('player');
+  if (ps.warrior) {
+    G2.units.filter(u => u.team === 'player' && u.cls === 'warrior').forEach(u => {
+      u.maxHp += ps.warrior.hp||0; u.hp += ps.warrior.hp||0; refreshUnitBars(u);
+    });
+  }
+
+  addLog2(`━━━ 第${GAME2.stage+1}关 开始！━��━`, 'sys');
+  updateTabInfo();
+}
+
+let p2Finished = false;
+
+// ---- Competition Check ----
+function checkCompetitionEnd() {
+  // If both players done or one fails definitively, show comparison
+  // For now, just update tab info
+  updateTabInfo();
+}
+
+// ---- P2 Main Loop ----
+app2.ticker.add((delta) => {
+  const dt = delta / 60;
+  updateTweens2(dt);
+  updateParticles2(dt);
+  battleUpdate2(dt);
+});
+
+// ---- P2 canvas resize ----
+function resizeCanvas2() {
+  const container = document.getElementById('p2-pixi-container');
+  const isMobile = window.innerWidth <= 900;
+  if (!isMobile) {
+    container.style.width = ''; container.style.height = '';
+    app2.renderer.resize(BF_W, BF_H); app2.stage.scale.set(1); return;
+  }
+  const panelsW = 94 + 114 + 20;
+  const availW = window.innerWidth - panelsW;
+  const availH = window.innerHeight - 90;
+  const scale = Math.min(availW/BF_W, availH/BF_H, 1);
+  const displayW = Math.floor(BF_W*scale), displayH = Math.floor(BF_H*scale);
+  container.style.width = displayW+'px'; container.style.height = displayH+'px';
+  app2.renderer.resize(BF_W, BF_H);
+  app2.view.style.width = displayW+'px'; app2.view.style.height = displayH+'px';
+}
+
+// ---- Override existing resize to also resize P2 ----
+const _origResize = resizeCanvas;
+resizeCanvas = function() { _origResize(); resizeCanvas2(); };
+
+// ---- Override existing endBattle to update tab and check competition ----
+const _origEndBattle = endBattle;
+endBattle = function(winner) {
+  _origEndBattle(winner);
+  updateTabInfo();
+};
+
+// ---- Update fullReset to also reset P2 ----
+const _origFullReset = fullReset;
+fullReset = function() {
+  GAME = { stage: 0, gold: 0, classLevels: {warrior:1, mage:1, priest:1}, playerLayout: [] };
+  GAME2 = { stage: 0, gold: 0, classLevels: {warrior:1, mage:1, priest:1}, playerLayout: [] };
+  p2Finished = false;
+  document.getElementById('result-overlay').classList.remove('show');
+  setupStage();
+  setupStage2();
+  switchTab(1);
+  // P2 starts automatically
+  setTimeout(() => aiStartBattle(), 2000 + Math.random()*1000);
+};
+
+// ---- Init P2 ----
+function initP2() {
+  drawGrid2();
+  buildUpgradePanel2();
+  placeEnemies2();
+  aiPlaceUnits();
+  buildBench2();
+  updateSynPanel2();
+  resizeCanvas2();
+
+  addLog2('═══ AI玩家就绪 ═══', 'sys');
+  addLog2(`第1关：${STAGES[0].name}`, 'sys');
+
+  // P2 auto-starts after a short delay
+  setTimeout(() => aiStartBattle(), 3000);
+}
+
+preloadTextures().then(() => { init(); initP2(); }).catch(() => { init(); initP2(); });
 </script>
 </body>
 </html>
